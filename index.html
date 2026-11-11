@@ -12,6 +12,7 @@
 body{margin:0;background:#fff;color:#222;font-family:Arial,sans-serif;padding:14px}
 button,input{font:inherit}
 button{border:0;border-radius:7px;padding:9px 11px;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
 .app{max-width:650px;margin:auto}
 header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
 h2{font-size:20px;margin:0}
@@ -20,6 +21,7 @@ h2{font-size:20px;margin:0}
 .groups{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .tab{background:#f6f6f6;color:#444}
 .tab.active{background:#222;color:#fff}
+.add-group{background:#eee;color:#333}
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
 .group-title h3{font-size:16px;margin:0}
 .group-delete{background:transparent;color:#999;font-size:12px}
@@ -29,8 +31,10 @@ h2{font-size:20px;margin:0}
 .name{font-weight:600;overflow-wrap:anywhere;font-size:14px}
 .phone{font-size:12px;color:#888;margin-top:4px}
 .star,.eye,.arrow,.del{background:transparent;color:#666;padding:0;width:29px;height:29px;min-width:29px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;border-radius:6px}
-.star{font-size:19px;color:#aaa}.star.on{color:#c99a00}
-.del{font-size:19px;color:#888}.arrow{font-size:18px}
+.star{font-size:19px;color:#aaa}
+.star.on{color:#c99a00}
+.del{font-size:19px;color:#888}
+.arrow{font-size:18px}
 .status{font-size:11px;padding:6px 7px;white-space:nowrap;border-radius:5px}
 .none{background:#f7eeee;color:#9b4545}
 .done{background:#edf5ef;color:#39754a}
@@ -50,7 +54,8 @@ h2{font-size:20px;margin:0}
 .form{display:none;background:#fff;padding:12px;border:1px solid #eee;border-radius:8px;margin:10px 0}
 .form.show{display:block}
 .form input,.auth-card input,.modal input{width:100%;padding:11px;border:1px solid #e5e5e5;border-radius:7px;margin-bottom:8px;outline:none}
-.actions{display:flex;gap:7px}.actions button{flex:1}
+.actions{display:flex;gap:7px}
+.actions button{flex:1}
 .empty{text-align:center;color:#999;padding:25px 10px;background:#fafafa;border-radius:8px}
 .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:20;align-items:center;justify-content:center;padding:20px}
 .modal-bg.show{display:flex}
@@ -68,8 +73,8 @@ h2{font-size:20px;margin:0}
 #appScreen{display:none}
 #userBar{font-size:12px;color:#888;display:flex;align-items:center;gap:8px}
 #userBar button{font-size:11px;padding:6px 9px;background:#f3f3f3;color:#555}
-#message{font-size:12px;color:#888;min-height:20px;margin:8px 0}
-#message.error{color:#b44}
+.message{font-size:12px;color:#888;min-height:20px;margin:8px 0}
+.message.error{color:#b44}
 #busy{display:none;text-align:center;color:#888;padding:30px}
 </style>
 </head>
@@ -85,7 +90,7 @@ h2{font-size:20px;margin:0}
   <input id="password" type="password" placeholder="كلمة المرور" autocomplete="current-password">
   <button class="dark" id="authButton" onclick="handleAuth()">تسجيل الدخول</button>
   <button class="auth-switch" id="switchButton" onclick="toggleAuthMode()">إنشاء حساب جديد</button>
-  <div id="message"></div>
+  <div id="authMessage" class="message"></div>
  </div>
 </section>
 
@@ -99,10 +104,12 @@ h2{font-size:20px;margin:0}
  </header>
 
  <div class="groups" id="groups"></div>
+
  <div class="group-title">
   <h3 id="groupTitle"></h3>
   <button class="group-delete" onclick="askDeleteGroup()">× حذف المجموعة</button>
  </div>
+
  <div id="people"></div>
 
  <div class="form" id="personForm">
@@ -118,7 +125,7 @@ h2{font-size:20px;margin:0}
   <span>＋ إضافة شخص</span>
   <span class="toggle-arrow" id="personToggleArrow">⌄</span>
  </button>
- <div id="message"></div>
+ <div id="appMessage" class="message"></div>
 </section>
 
 <div class="modal-bg" id="modalBg">
@@ -136,6 +143,7 @@ const parentStatuses=[
  {text:"✓ تم التواصل",cls:"done"},
  {text:"− لم يتم الرد",cls:"wait"}
 ];
+
 const childStatuses=[
  {text:"دراسة الحالة",cls:"study"},
  {text:"في طور العملية",cls:"wait"},
@@ -153,16 +161,20 @@ let saveQueue=Promise.resolve();
 
 function uid(){return crypto.randomUUID()}
 function newGroup(name){return{id:uid(),name,people:[]}}
+
 function safe(s){
  return String(s??"").replace(/[&<>"']/g,c=>({
  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
  }[c]));
 }
+
 function showMessage(msg,error=false){
- const el=document.getElementById("message");
+ const appVisible=document.getElementById("appScreen").style.display==="block";
+ const el=document.getElementById(appVisible?"appMessage":"authMessage");
  el.textContent=msg;
- el.className=error?"error":"";
+ el.className="message"+(error?" error":"");
 }
+
 function toggleAuthMode(){
  isSignup=!isSignup;
  document.getElementById("authButton").textContent=isSignup?"إنشاء الحساب":"تسجيل الدخول";
@@ -172,13 +184,18 @@ function toggleAuthMode(){
  document.getElementById("password").autocomplete=isSignup?"new-password":"current-password";
  showMessage("");
 }
+
 async function handleAuth(){
  const email=document.getElementById("email").value.trim();
  const password=document.getElementById("password").value;
+
  if(!email||!password){showMessage("اكتب الإيميل وكلمة المرور.",true);return}
  if(password.length<6){showMessage("كلمة المرور لازم تكون 6 أحرف على الأقل.",true);return}
+
  const btn=document.getElementById("authButton");
- btn.disabled=true;showMessage("جاري التحقق...");
+ btn.disabled=true;
+ showMessage("جاري التحقق...");
+
  try{
   let result;
   if(isSignup){
@@ -186,23 +203,33 @@ async function handleAuth(){
   }else{
    result=await db.auth.signInWithPassword({email,password});
   }
+
   if(result.error)throw result.error;
+
   if(isSignup&&!result.data.session){
    showMessage("تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيد الحساب، ثم سجّل الدخول.");
    return;
   }
+
   if(result.data.session)await enterApp(result.data.session.user);
- }catch(e){showMessage(e.message||"صار خطأ أثناء تسجيل الدخول.",true)}
- finally{btn.disabled=false}
+ }catch(e){
+  showMessage(e.message||"صار خطأ أثناء تسجيل الدخول.",true);
+ }finally{
+  btn.disabled=false;
+ }
 }
+
 async function logout(){
  await db.auth.signOut();
- currentUser=null;groups=[];active="";
+ currentUser=null;
+ groups=[];
+ active="";
  document.getElementById("appScreen").style.display="none";
  document.getElementById("authScreen").style.display="block";
  document.getElementById("password").value="";
  showMessage("تم تسجيل الخروج.");
 }
+
 function getLocalData(){
  try{
   const x=JSON.parse(localStorage.getItem(LOCAL_KEY));
@@ -210,32 +237,42 @@ function getLocalData(){
  }catch(e){}
  return null;
 }
+
 function normalizeLocal(data){
  const idMap=new Map();
  const makeId=old=>{
   if(!idMap.has(old))idMap.set(old,uid());
   return idMap.get(old);
  };
+
  groups=(data.groups||[]).map(g=>({
   id:makeId(g.id||uid()),
   name:g.name||"مجموعة",
   people:(g.people||[]).map(p=>({
-   id:makeId(p.id||uid()),name:p.name||"",phone:p.phone||"",
-   status:Number(p.status)||0,favorite:!!p.favorite,
+   id:makeId(p.id||uid()),
+   name:p.name||"",
+   phone:p.phone||"",
+   status:Number(p.status)||0,
+   favorite:!!p.favorite,
    children:(p.children||[]).map(c=>({
-    id:makeId(c.id||uid()),name:c.name||"",phone:c.phone||"",
+    id:makeId(c.id||uid()),
+    name:c.name||"",
+    phone:c.phone||"",
     status:Number(c.status)||0
    }))
   }))
  }));
+
  active=idMap.get(data.active)||groups[0]?.id||"";
 }
+
 async function enterApp(user){
  currentUser=user;
  document.getElementById("authScreen").style.display="none";
  document.getElementById("appScreen").style.display="block";
  document.getElementById("busy").style.display="block";
  document.getElementById("userEmail").textContent=user.email||"حسابي";
+
  try{
   await loadCloudData();
   document.getElementById("busy").style.display="none";
@@ -245,85 +282,114 @@ async function enterApp(user){
   showMessage("تعذر تحميل البيانات: "+e.message,true);
  }
 }
+
 async function loadCloudData(){
  const owner=currentUser.id;
+
  const [gRes,pRes,cRes]=await Promise.all([
   db.from("dc_groups").select("*").eq("owner_id",owner).order("created_at"),
   db.from("dc_people").select("*").eq("owner_id",owner),
   db.from("dc_children").select("*").eq("owner_id",owner)
  ]);
+
  if(gRes.error)throw gRes.error;
  if(pRes.error)throw pRes.error;
  if(cRes.error)throw cRes.error;
 
  if(!gRes.data.length){
   const local=getLocalData();
+
   if(local&&local.groups?.length){
    normalizeLocal(local);
    await saveCloudNow();
    return;
   }
+
   groups=[newGroup("المجموعة الأولى")];
   active=groups[0].id;
   await saveCloudNow();
   return;
  }
+
  const people=pRes.data;
  const children=cRes.data;
+
  groups=gRes.data.map(g=>({
-  id:g.id,name:g.name,
+  id:g.id,
+  name:g.name,
   people:people.filter(p=>p.group_id===g.id).map(p=>({
-   id:p.id,name:p.name,phone:p.phone,status:p.status,
+   id:p.id,
+   name:p.name,
+   phone:p.phone,
+   status:p.status,
    favorite:p.favorite,
    children:children.filter(c=>c.person_id===p.id).map(c=>({
-    id:c.id,name:c.name,phone:c.phone,status:c.status
+    id:c.id,
+    name:c.name,
+    phone:c.phone,
+    status:c.status
    }))
   }))
  }));
+
  active=groups[0]?.id||"";
 }
+
 function snapshot(){
  return JSON.parse(JSON.stringify({groups,active}));
 }
+
 function persist(){
  if(!currentUser)return;
+
  const data=snapshot();
+
  saveQueue=saveQueue.then(()=>saveSnapshot(data)).catch(e=>{
   console.error(e);
   showMessage("ما قدرنا نحفظ آخر تعديل: "+e.message,true);
  });
 }
+
+async function saveCloudNow(){
+ await saveSnapshot(snapshot());
+}
+
 async function saveSnapshot(data){
  const owner=currentUser.id;
  const gs=data.groups;
  const ps=gs.flatMap(g=>g.people.map(p=>({...p,group_id:g.id})));
  const cs=ps.flatMap(p=>p.children.map(c=>({...c,person_id:p.id})));
 
- const groupRows=gs.map(g=>({id:g.id,owner_id:owner,name:g.name}));
- const peopleRows=ps.map(p=>({
-  id:p.id,owner_id:owner,group_id:p.group_id,name:p.name,
-  phone:p.phone,status:p.status,favorite:!!p.favorite
+ const groupRows=gs.map(g=>({
+  id:g.id,owner_id:owner,name:g.name
  }));
+
+ const peopleRows=ps.map(p=>({
+  id:p.id,owner_id:owner,group_id:p.group_id,
+  name:p.name,phone:p.phone,status:p.status,
+  favorite:!!p.favorite
+ }));
+
  const childRows=cs.map(c=>({
   id:c.id,owner_id:owner,person_id:c.person_id,
   name:c.name,phone:c.phone,status:c.status
  }));
 
- // أضف أو حدّث البيانات أولاً
  if(groupRows.length){
   const r=await db.from("dc_groups").upsert(groupRows);
   if(r.error)throw r.error;
  }
+
  if(peopleRows.length){
   const r=await db.from("dc_people").upsert(peopleRows);
   if(r.error)throw r.error;
  }
+
  if(childRows.length){
   const r=await db.from("dc_children").upsert(childRows);
   if(r.error)throw r.error;
  }
 
- // احذف العناصر التي لم تعد موجودة في التطبيق
  await removeMissing("dc_children",childRows.map(x=>x.id),owner);
  await removeMissing("dc_people",peopleRows.map(x=>x.id),owner);
  await removeMissing("dc_groups",groupRows.map(x=>x.id),owner);
@@ -331,23 +397,42 @@ async function saveSnapshot(data){
  localStorage.setItem(LOCAL_KEY,JSON.stringify(data));
  showMessage("تم الحفظ والمزامنة ✓");
 }
+
 async function removeMissing(table,ids,owner){
  let q=db.from(table).delete().eq("owner_id",owner);
  if(ids.length)q=q.not("id","in","("+ids.join(",")+")");
  const r=await q;
  if(r.error)throw r.error;
 }
-function current(){return groups.find(g=>g.id===active)||groups[0]}
+
+function current(){
+ return groups.find(g=>g.id===active)||groups[0];
+}
+
 function render(){
  if(!groups.length)groups=[newGroup("المجموعة الأولى")];
  if(!groups.some(g=>g.id===active))active=groups[0].id;
- document.getElementById("groups").innerHTML=groups.map(g=>
-  `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
- ).join("");
+
+ // زر إضافة المجموعة ظاهر دائماً بجانب المجموعات
+ document.getElementById("groups").innerHTML=
+  groups.map(g=>
+   `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
+  ).join("")+
+  `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`;
+
  document.getElementById("groupTitle").textContent=current().name;
- const list=[...current().people].sort((a,b)=>Number(!!b.favorite)-Number(!!a.favorite));
+
+ const list=[...current().people].sort((a,b)=>
+  Number(!!b.favorite)-Number(!!a.favorite)
+ );
+
  const area=document.getElementById("people");
- if(!list.length){area.innerHTML='<div class="empty">ما فيه أشخاص هنا</div>';return}
+
+ if(!list.length){
+  area.innerHTML='<div class="empty">ما فيه أشخاص هنا</div>';
+  return;
+ }
+
  area.innerHTML=list.map(p=>`
  <div class="person">
   <div class="line">
@@ -361,6 +446,7 @@ function render(){
    ${eyeButton(p.id)}
    <button class="del" onclick="askDeletePerson('${p.id}')">×</button>
   </div>
+
   ${expanded[p.id]?`
   <div class="children">
    ${p.children.map(c=>`
@@ -372,8 +458,11 @@ function render(){
      ${statusButton(c.id,c.status,true)}
      ${eyeButton(c.id)}
      <button class="del" onclick="askDeleteChild('${c.id}')">×</button>
-    </div>`).join("")}
+    </div>
+   `).join("")}
+
    <button class="child-add" onclick="openChildForm('${p.id}')">＋ إضافة اسم</button>
+
    <div class="form" id="childForm-${p.id}">
     <input id="childName-${p.id}" placeholder="اسم الشخص">
     <input id="childPhone-${p.id}" placeholder="رقم الجوال" type="tel">
@@ -383,113 +472,264 @@ function render(){
     </div>
    </div>
   </div>`:""}
- </div>`).join("");
+ </div>
+ `).join("");
 }
-function privateText(id,value){return revealed[id]===false?"****":safe(value)}
-function eyeButton(id){return `<button class="eye" onclick="toggleEye('${id}')">👁</button>`}
-function toggleEye(id){revealed[id]=revealed[id]===false;render()}
+
+function privateText(id,value){
+ return revealed[id]===false?"****":safe(value);
+}
+
+function eyeButton(id){
+ return `<button class="eye" onclick="toggleEye('${id}')">👁</button>`;
+}
+
+function toggleEye(id){
+ revealed[id]=revealed[id]===false;
+ render();
+}
+
 function statusButton(id,value,isChild=false){
  const data=isChild?childStatuses:parentStatuses;
  const s=data[value]||data[0];
+
  return `<div class="status-box">
   <button class="status ${s.cls}" onclick="toggleStatus('${id}')">${s.text}</button>
   <div class="status-list" id="status-${id}">
-   ${data.map((x,i)=>`<button onclick="setStatus('${id}',${i},${isChild})">${x.text}</button>`).join("")}
+   ${data.map((x,i)=>
+    `<button onclick="setStatus('${id}',${i},${isChild})">${x.text}</button>`
+   ).join("")}
   </div>
  </div>`;
 }
-function selectGroup(id){active=id;render()}
-function favorite(id){const p=current().people.find(x=>x.id===id);if(p){p.favorite=!p.favorite;render();persist()}}
-function toggleChildren(id){expanded[id]=!expanded[id];render()}
-function toggleStatus(id){
- const menu=document.getElementById("status-"+id);if(!menu)return;
- document.querySelectorAll(".status-list").forEach(x=>{if(x!==menu)x.classList.remove("show")});
- menu.classList.toggle("show");
+
+function selectGroup(id){
+ active=id;
+ render();
 }
-function setStatus(id,value,isChild){
- for(const g of groups)for(const p of g.people){
-  if(!isChild&&p.id===id){p.status=value;render();persist();return}
-  if(isChild){const c=p.children.find(x=>x.id===id);if(c){c.status=value;render();persist();return}}
+
+function favorite(id){
+ const p=current().people.find(x=>x.id===id);
+ if(p){
+  p.favorite=!p.favorite;
+  render();
+  persist();
  }
 }
+
+function toggleChildren(id){
+ expanded[id]=!expanded[id];
+ render();
+}
+
+function toggleStatus(id){
+ const menu=document.getElementById("status-"+id);
+ if(!menu)return;
+
+ document.querySelectorAll(".status-list").forEach(x=>{
+  if(x!==menu)x.classList.remove("show");
+ });
+
+ menu.classList.toggle("show");
+}
+
+function setStatus(id,value,isChild){
+ for(const g of groups)for(const p of g.people){
+  if(!isChild&&p.id===id){
+   p.status=value;
+   render();
+   persist();
+   return;
+  }
+
+  if(isChild){
+   const c=p.children.find(x=>x.id===id);
+   if(c){
+    c.status=value;
+    render();
+    persist();
+    return;
+   }
+  }
+ }
+}
+
+// إضافة مجموعة
 function openGroupForm(){
- showModal(`<h3>إضافة مجموعة</h3><input id="newGroupName" placeholder="اسم المجموعة">
- <div class="modal-actions"><button class="save" onclick="saveGroup()">إضافة</button><button class="cancel" onclick="closeModal()">إلغاء</button></div>`);
+ showModal(`
+  <h3>إضافة مجموعة</h3>
+  <input id="newGroupName" placeholder="اسم المجموعة">
+  <div class="modal-actions">
+   <button class="save" onclick="saveGroup()">إضافة</button>
+   <button class="cancel" onclick="closeModal()">إلغاء</button>
+  </div>
+ `);
+
  document.getElementById("newGroupName").focus();
 }
+
 function saveGroup(){
- const input=document.getElementById("newGroupName"),name=input.value.trim();
- if(!name){input.focus();return}
- groups.push(newGroup(name));active=groups[groups.length-1].id;
- closeModal();render();persist();
+ const input=document.getElementById("newGroupName");
+ const name=input.value.trim();
+
+ if(!name){
+  input.focus();
+  return;
+ }
+
+ const group=newGroup(name);
+ groups.push(group);
+ active=group.id;
+
+ closeModal();
+ render();
+ persist();
 }
+
 function askDeleteGroup(){
- if(groups.length===1){showModal('<h3>تنبيه</h3><p>لازم تخلي مجموعة واحدة على الأقل.</p><button class="dark" onclick="closeModal()">حسنًا</button>');return}
+ if(groups.length===1){
+  showModal('<h3>تنبيه</h3><p>لازم تخلي مجموعة واحدة على الأقل.</p><button class="dark" onclick="closeModal()">حسنًا</button>');
+  return;
+ }
+
  askConfirm("تبي تحذف المجموعة وكل الأسماء الموجودة فيها؟","confirmDeleteGroup()");
 }
-function confirmDeleteGroup(){groups=groups.filter(g=>g.id!==active);active=groups[0].id;closeModal();render();persist()}
+
+function confirmDeleteGroup(){
+ groups=groups.filter(g=>g.id!==active);
+ active=groups[0].id;
+ closeModal();
+ render();
+ persist();
+}
+
 function openPersonForm(){
  document.getElementById("personForm").classList.add("show");
  document.getElementById("personToggleArrow").textContent="⌃";
  document.getElementById("personName").focus();
 }
+
 function togglePersonForm(){
  const f=document.getElementById("personForm");
- if(f.classList.contains("show"))closePersonForm();else openPersonForm();
+ if(f.classList.contains("show"))closePersonForm();
+ else openPersonForm();
 }
+
 function closePersonForm(){
  document.getElementById("personForm").classList.remove("show");
  document.getElementById("personToggleArrow").textContent="⌄";
  document.getElementById("personName").value="";
  document.getElementById("personPhone").value="";
 }
+
 function savePerson(){
  const name=document.getElementById("personName").value.trim();
  const phone=document.getElementById("personPhone").value.trim();
- if(!name||!phone){alert("اكتب الاسم ورقم الجوال");return}
- current().people.push({id:uid(),name,phone,status:0,favorite:false,children:[]});
- closePersonForm();render();persist();
+
+ if(!name||!phone){
+  alert("اكتب الاسم ورقم الجوال");
+  return;
+ }
+
+ current().people.push({
+  id:uid(),name,phone,status:0,favorite:false,children:[]
+ });
+
+ closePersonForm();
+ render();
+ persist();
 }
+
 let deletePersonId="",deleteChildId="";
-function askDeletePerson(id){deletePersonId=id;askConfirm("تبي تحذف الشخص وكل الأسماء التابعة له؟","confirmDeletePerson()")}
-function confirmDeletePerson(){
- for(const g of groups)g.people=g.people.filter(p=>p.id!==deletePersonId);
- delete expanded[deletePersonId];delete revealed[deletePersonId];
- closeModal();render();persist();
+
+function askDeletePerson(id){
+ deletePersonId=id;
+ askConfirm("تبي تحذف الشخص وكل الأسماء التابعة له؟","confirmDeletePerson()");
 }
-function openChildForm(id){document.getElementById("childForm-"+id)?.classList.add("show")}
-function closeChildForm(id){document.getElementById("childForm-"+id)?.classList.remove("show")}
+
+function confirmDeletePerson(){
+ for(const g of groups){
+  g.people=g.people.filter(p=>p.id!==deletePersonId);
+ }
+
+ delete expanded[deletePersonId];
+ delete revealed[deletePersonId];
+
+ closeModal();
+ render();
+ persist();
+}
+
+function openChildForm(id){
+ document.getElementById("childForm-"+id)?.classList.add("show");
+}
+
+function closeChildForm(id){
+ document.getElementById("childForm-"+id)?.classList.remove("show");
+}
+
 function saveChild(id){
- const p=current().people.find(x=>x.id===id);if(!p)return;
+ const p=current().people.find(x=>x.id===id);
+ if(!p)return;
+
  const name=document.getElementById("childName-"+id).value.trim();
  const phone=document.getElementById("childPhone-"+id).value.trim();
- if(!name||!phone){alert("اكتب الاسم ورقم الجوال");return}
+
+ if(!name||!phone){
+  alert("اكتب الاسم ورقم الجوال");
+  return;
+ }
+
  p.children.push({id:uid(),name,phone,status:0});
- render();persist();
+ render();
+ persist();
 }
-function askDeleteChild(id){deleteChildId=id;askConfirm("تبي تحذف هذا الاسم؟","confirmDeleteChild()")}
+
+function askDeleteChild(id){
+ deleteChildId=id;
+ askConfirm("تبي تحذف هذا الاسم؟","confirmDeleteChild()");
+}
+
 function confirmDeleteChild(){
- for(const g of groups)for(const p of g.people)p.children=p.children.filter(c=>c.id!==deleteChildId);
- delete revealed[deleteChildId];closeModal();render();persist();
+ for(const g of groups)for(const p of g.people){
+  p.children=p.children.filter(c=>c.id!==deleteChildId);
+ }
+
+ delete revealed[deleteChildId];
+ closeModal();
+ render();
+ persist();
 }
+
 function showModal(html){
  document.getElementById("modalContent").innerHTML=html;
  document.getElementById("modalBg").classList.add("show");
 }
+
 function closeModal(){
  document.getElementById("modalBg").classList.remove("show");
  document.getElementById("modalContent").innerHTML="";
 }
+
 function askConfirm(message,action){
- showModal(`<h3>تأكيد الحذف</h3><p>${message}</p>
- <div class="modal-actions"><button class="save" onclick="${action}">نعم، احذف</button>
- <button class="cancel" onclick="closeModal()">إلغاء</button></div>`);
+ showModal(`
+  <h3>تأكيد الحذف</h3>
+  <p>${message}</p>
+  <div class="modal-actions">
+   <button class="save" onclick="${action}">نعم، احذف</button>
+   <button class="cancel" onclick="closeModal()">إلغاء</button>
+  </div>
+ `);
 }
 
 db.auth.getSession().then(async({data,error})=>{
- if(error){showMessage(error.message,true);return}
+ if(error){
+  showMessage(error.message,true);
+  return;
+ }
  if(data.session)await enterApp(data.session.user);
 });
+
 db.auth.onAuthStateChange((event,session)=>{
  if(event==="SIGNED_OUT"){
   currentUser=null;
