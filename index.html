@@ -1,0 +1,424 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f5f5">
+<title>دفتر التواصل</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f5f5;color:#222;font-family:Arial,sans-serif;padding:15px}
+.app{max-width:620px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+h2{font-size:21px;margin:0}
+button,input{font:inherit}
+button{border:0;border-radius:8px;padding:9px 12px;cursor:pointer}
+.dark{background:#222;color:white}
+.groups{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:15px}
+.tab{background:#e8e8e8;color:#333}
+.tab.active{background:#222;color:white}
+.group-title{display:flex;justify-content:space-between;align-items:center;margin:15px 0}
+.group-title h3{font-size:17px;margin:0}
+.person{background:white;border:1px solid #e8e8e8;border-radius:11px;padding:12px;margin-bottom:9px}
+.line{display:flex;align-items:center;gap:7px}
+.info{flex:1;min-width:0}
+.name{font-weight:bold;overflow-wrap:anywhere}
+.phone{font-size:12px;color:#888;margin-top:5px}
+.star{background:none;color:#bbb;font-size:20px;padding:3px}
+.star.on{color:#d9a000}
+.eye{background:#f1f1f1;padding:7px 8px;color:#555}
+.arrow{background:#eee;padding:7px 10px}
+.del{background:#f3f3f3;color:#777;padding:5px 10px;font-size:17px}
+.status{font-size:11px;padding:7px 8px;white-space:nowrap}
+.none{background:#fff0f0;color:#b33}
+.done{background:#e9f7ed;color:#27804a}
+.wait{background:#f7f2e6;color:#967b30}
+.study{background:#edf1f7;color:#49617e}
+.status-box{position:relative}
+.status-list{display:none;position:absolute;background:white;border:1px solid #ddd;border-radius:8px;z-index:5;left:0;top:35px;width:155px;box-shadow:0 4px 12px #0001;overflow:hidden}
+.status-list.show{display:block}
+.status-list button{display:block;width:100%;text-align:right;background:white;font-size:12px;border-radius:0}
+.status-list button:hover{background:#eee}
+.children{margin:12px 0 0;padding-right:15px;border-right:2px solid #eee}
+.child{display:flex;align-items:center;gap:6px;padding:9px 0;border-bottom:1px solid #eee}
+.child .name{font-size:14px}
+.child-add{font-size:12px;margin-top:9px;background:#eee}
+.add-person{width:100%;background:white;border:1px dashed #aaa;margin-top:8px;padding:13px;color:#444}
+.form{display:none;background:white;padding:13px;border:1px solid #ddd;border-radius:10px;margin:10px 0}
+.form.show{display:block}
+.form input{width:100%;padding:11px;border:1px solid #ddd;border-radius:8px;margin-bottom:9px;outline:none}
+.actions{display:flex;gap:7px}
+.actions button{flex:1}
+.save{background:#222;color:white}
+.cancel{background:#eee;color:#444}
+.empty{text-align:center;color:#999;padding:28px 10px;background:white;border-radius:10px}
+.modal-bg{display:none;position:fixed;inset:0;background:#0007;z-index:20;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:white;border-radius:13px;padding:18px;width:100%;max-width:330px}
+.modal h3{margin:0 0 12px;font-size:17px}
+.modal p{font-size:14px;color:#666}
+.modal input{width:100%;padding:11px;border:1px solid #ddd;border-radius:8px;margin:8px 0}
+.modal-actions{display:flex;gap:8px;margin-top:12px}
+.modal-actions button{flex:1}
+.confirm-text{font-size:14px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+ <h2>دفتر التواصل</h2>
+ <button class="dark" onclick="openGroupForm()">＋ مجموعة</button>
+</header>
+
+<div class="groups" id="groups"></div>
+
+<div class="group-title">
+ <h3 id="groupTitle"></h3>
+ <button class="del" onclick="askDeleteGroup()">حذف المجموعة ×</button>
+</div>
+
+<div id="people"></div>
+
+<div class="form" id="personForm">
+ <input id="personName" placeholder="اسم الشخص">
+ <input id="personPhone" placeholder="رقم الجوال" type="tel">
+ <div class="actions">
+  <button class="save" onclick="savePerson()">إضافة</button>
+  <button class="cancel" onclick="closePersonForm()">إلغاء</button>
+ </div>
+</div>
+
+<button class="add-person" onclick="openPersonForm()">＋ إضافة شخص</button>
+</div>
+
+<div class="modal-bg" id="modalBg">
+ <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+const KEY="simpleContactBookV2";
+
+const parentStatuses=[
+ {text:"✕ لم يتم التواصل",cls:"none"},
+ {text:"✓ تم التواصل",cls:"done"},
+ {text:"− لم يتم الرد",cls:"wait"}
+];
+
+const childStatuses=[
+ {text:"دراسة الحالة",cls:"study"},
+ {text:"في طور العملية",cls:"wait"},
+ {text:"لم يتم الاتفاق",cls:"none"},
+ {text:"تم التوقيع",cls:"done"}
+];
+
+function uid(){
+ return Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+}
+function newGroup(name){
+ return {id:uid(),name,people:[]};
+}
+
+let groups=[];
+let active="";
+let expanded={};
+let revealed={};
+
+try{
+ const old=JSON.parse(localStorage.getItem(KEY));
+ if(old&&Array.isArray(old.groups)&&old.groups.length){
+  groups=old.groups;
+  active=old.active||groups[0].id;
+  groups.forEach(g=>{
+   g.people ||= [];
+   g.people.forEach(p=>{
+    p.children ||= [];
+    if(p.status===undefined)p.status=0;
+    p.children.forEach(c=>{
+     if(c.status===undefined)c.status=0;
+    });
+   });
+  });
+ }else{
+  groups=[newGroup("المجموعة الأولى")];
+  active=groups[0].id;
+ }
+}catch(e){
+ groups=[newGroup("المجموعة الأولى")];
+ active=groups[0].id;
+}
+
+function save(){
+ localStorage.setItem(KEY,JSON.stringify({groups,active}));
+}
+function current(){
+ return groups.find(g=>g.id===active)||groups[0];
+}
+function safe(s){
+ return String(s??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[c]));
+}
+
+function toggleEye(id){
+ revealed[id]=!revealed[id];
+ render();
+}
+function privateText(id,value){
+ return revealed[id] ? safe(value) : "****";
+}
+function eyeButton(id){
+ return `<button class="eye" onclick="toggleEye('${id}')" title="إظهار أو إخفاء">👁</button>`;
+}
+
+function statusButton(id,value,isChild=false){
+ const data=isChild?childStatuses:parentStatuses;
+ const s=data[value]||data[0];
+
+ return `<div class="status-box">
+  <button class="status ${s.cls}" onclick="toggleStatus('${id}')">${s.text}</button>
+  <div class="status-list" id="status-${id}">
+   ${data.map((x,i)=>`
+    <button onclick="setStatus('${id}',${i},${isChild})">${x.text}</button>
+   `).join("")}
+  </div>
+ </div>`;
+}
+
+function render(){
+ if(!groups.length)groups=[newGroup("المجموعة الأولى")];
+ if(!groups.some(g=>g.id===active))active=groups[0].id;
+
+ document.getElementById("groups").innerHTML=groups.map(g=>
+ `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
+ ).join("");
+
+ document.getElementById("groupTitle").textContent=current().name;
+
+ const list=[...current().people].sort((a,b)=>
+  Number(!!b.favorite)-Number(!!a.favorite)
+ );
+ const area=document.getElementById("people");
+
+ if(!list.length){
+  area.innerHTML='<div class="empty">ما فيه أشخاص هنا</div>';
+  save();
+  return;
+ }
+
+ area.innerHTML=list.map(p=>`
+ <div class="person">
+  <div class="line">
+   <button class="star ${p.favorite?"on":""}" onclick="favorite('${p.id}')">★</button>
+   <div class="info">
+    <div class="name">${privateText(p.id,p.name)}</div>
+    <div class="phone">${privateText(p.id,p.phone)}</div>
+   </div>
+   ${eyeButton(p.id)}
+   ${statusButton(p.id,p.status,false)}
+   <button class="arrow" onclick="toggleChildren('${p.id}')">⌄</button>
+   <button class="del" onclick="askDeletePerson('${p.id}')">×</button>
+  </div>
+
+  ${expanded[p.id]?`
+  <div class="children">
+   ${p.children.map(c=>`
+    <div class="child">
+     <div class="info">
+      <div class="name">${privateText(c.id,c.name)}</div>
+      <div class="phone">${privateText(c.id,c.phone)}</div>
+     </div>
+     ${eyeButton(c.id)}
+     ${statusButton(c.id,c.status,true)}
+     <button class="del" onclick="askDeleteChild('${c.id}')">×</button>
+    </div>
+   `).join("")}
+
+   <button class="child-add" onclick="openChildForm('${p.id}')">＋ إضافة اسم</button>
+
+   <div class="form" id="childForm-${p.id}">
+    <input id="childName-${p.id}" placeholder="اسم الشخص">
+    <input id="childPhone-${p.id}" placeholder="رقم الجوال" type="tel">
+    <div class="actions">
+     <button class="save" onclick="saveChild('${p.id}')">إضافة</button>
+     <button class="cancel" onclick="closeChildForm('${p.id}')">إلغاء</button>
+    </div>
+   </div>
+  </div>`:""}
+ </div>`).join("");
+
+ save();
+}
+
+function selectGroup(id){
+ active=id;
+ render();
+}
+function favorite(id){
+ const p=current().people.find(x=>x.id===id);
+ if(p){p.favorite=!p.favorite;render()}
+}
+function toggleChildren(id){
+ expanded[id]=!expanded[id];
+ render();
+}
+function toggleStatus(id){
+ const menu=document.getElementById("status-"+id);
+ if(!menu)return;
+ document.querySelectorAll(".status-list").forEach(x=>{
+  if(x!==menu)x.classList.remove("show");
+ });
+ menu.classList.toggle("show");
+}
+function setStatus(id,value,isChild){
+ for(const g of groups){
+  for(const p of g.people){
+   if(!isChild&&p.id===id){
+    p.status=value;
+    render();
+    return;
+   }
+   if(isChild){
+    const c=p.children.find(x=>x.id===id);
+    if(c){c.status=value;render();return}
+   }
+  }
+ }
+}
+
+/* المجموعات */
+function openGroupForm(){
+ showModal(`
+  <h3>إضافة مجموعة</h3>
+  <input id="newGroupName" placeholder="اسم المجموعة">
+  <div class="modal-actions">
+   <button class="save" onclick="saveGroup()">إضافة</button>
+   <button class="cancel" onclick="closeModal()">إلغاء</button>
+  </div>`);
+ document.getElementById("newGroupName").focus();
+}
+function saveGroup(){
+ const input=document.getElementById("newGroupName");
+ const name=input.value.trim();
+ if(!name){input.focus();return}
+ const g=newGroup(name);
+ groups.push(g);
+ active=g.id;
+ closeModal();
+ render();
+}
+function askDeleteGroup(){
+ if(groups.length===1){
+  showModal('<h3>تنبيه</h3><p>لازم تخلي مجموعة واحدة على الأقل.</p><button class="dark" onclick="closeModal()">حسنًا</button>');
+  return;
+ }
+ askConfirm("تبي تحذف المجموعة وكل الأسماء الموجودة فيها؟","confirmDeleteGroup()");
+}
+function confirmDeleteGroup(){
+ groups=groups.filter(g=>g.id!==active);
+ active=groups[0].id;
+ closeModal();
+ render();
+}
+
+/* الأشخاص */
+function openPersonForm(){
+ document.getElementById("personForm").classList.add("show");
+ document.getElementById("personName").focus();
+}
+function closePersonForm(){
+ document.getElementById("personForm").classList.remove("show");
+ document.getElementById("personName").value="";
+ document.getElementById("personPhone").value="";
+}
+function savePerson(){
+ const name=document.getElementById("personName").value.trim();
+ const phone=document.getElementById("personPhone").value.trim();
+ if(!name||!phone){alert("اكتب الاسم ورقم الجوال");return}
+ current().people.push({
+  id:uid(),name,phone,status:0,favorite:false,children:[]
+ });
+ closePersonForm();
+ render();
+}
+let deletePersonId="";
+function askDeletePerson(id){
+ deletePersonId=id;
+ askConfirm("تبي تحذف الشخص وكل الأسماء التابعة له؟","confirmDeletePerson()");
+}
+function confirmDeletePerson(){
+ for(const g of groups){
+  const before=g.people.length;
+  g.people=g.people.filter(p=>p.id!==deletePersonId);
+  if(before!==g.people.length)break;
+ }
+ delete expanded[deletePersonId];
+ delete revealed[deletePersonId];
+ closeModal();
+ render();
+}
+
+/* الأسماء التابعة */
+function openChildForm(id){
+ const f=document.getElementById("childForm-"+id);
+ if(f)f.classList.add("show");
+}
+function closeChildForm(id){
+ const f=document.getElementById("childForm-"+id);
+ if(f)f.classList.remove("show");
+}
+function saveChild(id){
+ const p=current().people.find(x=>x.id===id);
+ if(!p)return;
+ const name=document.getElementById("childName-"+id).value.trim();
+ const phone=document.getElementById("childPhone-"+id).value.trim();
+ if(!name||!phone){alert("اكتب الاسم ورقم الجوال");return}
+ p.children.push({id:uid(),name,phone,status:0});
+ render();
+}
+let deleteChildId="";
+function askDeleteChild(id){
+ deleteChildId=id;
+ askConfirm("تبي تحذف هذا الاسم؟","confirmDeleteChild()");
+}
+function confirmDeleteChild(){
+ for(const g of groups){
+  for(const p of g.people){
+   const before=p.children.length;
+   p.children=p.children.filter(c=>c.id!==deleteChildId);
+   if(before!==p.children.length)break;
+  }
+ }
+ delete revealed[deleteChildId];
+ closeModal();
+ render();
+}
+
+/* النوافذ الداخلية */
+function showModal(html){
+ document.getElementById("modalContent").innerHTML=html;
+ document.getElementById("modalBg").classList.add("show");
+}
+function closeModal(){
+ document.getElementById("modalBg").classList.remove("show");
+ document.getElementById("modalContent").innerHTML="";
+}
+function askConfirm(message,action){
+ showModal(`
+  <h3>تأكيد الحذف</h3>
+  <div class="confirm-text">${message}</div>
+  <div class="modal-actions">
+   <button class="save" onclick="${action}">نعم، احذف</button>
+   <button class="cancel" onclick="closeModal()">إلغاء</button>
+  </div>`);
+}
+
+/* إخفاء المعلومات عند إعادة فتح الصفحة */
+window.addEventListener("pageshow",()=>{
+ revealed={};
+});
+
+render();
+</script>
+</body>
+</html>
