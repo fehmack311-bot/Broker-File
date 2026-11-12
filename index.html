@@ -26,8 +26,8 @@ h2{font-size:20px;margin:0}
 .group-tab-wrap{
  display:inline-flex;
  align-items:center;
- gap:4px;
- padding:4px 6px;
+ gap:10px;
+ padding:5px 9px;
  background:#f6f6f6;
  border:1px solid #ededed;
  border-radius:10px;
@@ -194,7 +194,7 @@ h2{font-size:20px;margin:0}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
  .star,.eye,.arrow,.del{width:27px;min-width:27px}
- .group-tab-wrap{gap:3px;padding:3px 5px}
+ .group-tab-wrap{gap:8px;padding:4px 8px}
  .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
  .add-person-circle{width:29px;height:29px;min-width:29px}
  .group-delete-icon{width:27px;min-width:27px}
@@ -575,7 +575,6 @@ function render(){
   groups.map(g=>`
    <div class="group-tab-wrap ${g.id===active?"active":""}">
 
-    <!-- زر إضافة الشخص: جهة اليمين -->
     <button class="add-person-circle"
      onclick="addPersonToGroup('${g.id}')"
      title="إضافة شخص" aria-label="إضافة شخص">
@@ -587,12 +586,10 @@ function render(){
      </svg>
     </button>
 
-    <!-- اسم المجموعة: بالنص -->
     <button class="tab" onclick="selectGroup('${g.id}')">
      ${safe(g.name)}
     </button>
 
-    <!-- سلة الحذف: الجهة المقابلة للإضافة -->
     <button class="group-delete-icon"
      onclick="askDeleteGroup('${g.id}')"
      title="حذف المجموعة" aria-label="حذف المجموعة">
