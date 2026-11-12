@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -15,7 +16,20 @@ button{border:0;border-radius:7px;padding:9px 11px;cursor:pointer;transition:bac
 button:disabled{opacity:.5;cursor:not-allowed}
 button:active{background:#e5e5e5!important;color:#333!important}
 .app{max-width:650px;margin:auto}
-header{display:flex;justify-content:flex-end;align-items:center;margin-bottom:18px}
+
+header{
+ position:sticky;
+ top:0;
+ z-index:18;
+ display:flex;
+ justify-content:flex-end;
+ align-items:center;
+ margin:-14px -14px 18px;
+ padding:12px 14px;
+ background:#fff;
+ border-bottom:1px solid #eee;
+}
+
 h2{font-size:20px;margin:0}
 .dark,.save{background:#eee;color:#333}
 .cancel{background:#f1f1f1;color:#444}
@@ -45,6 +59,7 @@ h2{font-size:20px;margin:0}
 }
 .group-delete-icon:hover{background:#f8eeee;color:#a44}
 .group-delete-icon svg{width:16px;height:16px}
+
 .add-group{background:#eee;color:#333}
 .group-heading{display:flex;align-items:center;gap:9px}
 
@@ -59,7 +74,6 @@ h2{font-size:20px;margin:0}
  display:inline-flex;align-items:center;justify-content:center;border-radius:6px
 }
 
-/* النجمة */
 .star{
  width:23px;height:23px;min-width:23px;
  font-size:16px;color:#aaa
@@ -70,7 +84,6 @@ h2{font-size:20px;margin:0}
 .arrow svg,.eye svg{width:18px;height:18px}
 .arrow:hover,.eye:hover{background:#f3f3f3}
 
-/* القلم فوق النجمة في نفس العمود */
 .person-tools{
  display:flex;
  flex-direction:column;
@@ -97,7 +110,6 @@ h2{font-size:20px;margin:0}
  font-size:16px;
 }
 
-/* حقول تعديل الاسم والرقم */
 .name-edit-row{
  display:flex;
  flex-direction:column;
@@ -234,13 +246,50 @@ h2{font-size:20px;margin:0}
 .auth-switch{background:#f5f5f5;color:#444}
 #appScreen{display:none}
 #userBar{font-size:12px;color:#888;display:flex;align-items:center;gap:8px}
-#userBar button{font-size:11px;padding:6px 9px;background:#f3f3f3;color:#555}
+
+/* تنسيق زر الخروج فقط */
+#userBar > button:not(.top-add-group){
+ font-size:11px;
+ padding:6px 9px;
+ background:#f3f3f3;
+ color:#555;
+}
+
+/* زر إضافة المجموعة العلوي */
+.top-add-group{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:9px;
+ min-width:155px;
+ padding:11px 17px;
+ background:#292929;
+ color:#fff;
+ font-size:14px;
+ font-weight:bold;
+ border-radius:9px;
+ margin-left:8px;
+ white-space:nowrap;
+}
+
+.top-add-group:hover{background:#444}
+.top-add-group svg{width:21px;height:21px;flex-shrink:0}
+
 .message{font-size:12px;color:#888;min-height:20px;margin:8px 0}
 .message.error{color:#b44}
 #busy{display:none;text-align:center;color:#888;padding:30px}
 
 @media(max-width:420px){
  body{padding:11px}
+ header{margin:-11px -11px 16px;padding:11px}
+ #userBar{gap:6px}
+ .top-add-group{
+  min-width:125px;
+  padding:10px 11px;
+  font-size:12px;
+  gap:6px;
+ }
+ .top-add-group svg{width:19px;height:19px}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
  .star{width:23px;min-width:23px;height:23px}
@@ -277,7 +326,19 @@ h2{font-size:20px;margin:0}
  <header>
   <div id="userBar">
    <span id="userEmail"></span>
+
    <button onclick="askLogout()">خروج</button>
+
+   <button class="top-add-group" onclick="openGroupForm()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+     <circle cx="9" cy="7" r="3"/>
+     <path d="M3 20v-2a6 6 0 0 1 12 0v2"/>
+     <path d="M17 4.5a3 3 0 0 1 0 5.8"/>
+     <path d="M19 14a5 5 0 0 1 2 4v2"/>
+    </svg>
+    ＋ إضافة مجموعة
+   </button>
   </div>
  </header>
 
@@ -763,8 +824,7 @@ function render(){
      </svg>
     </button>
    </div>
-  `).join("")+
-  `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`;
+  `).join("");
 
  document.getElementById("groupTitle").textContent=current().name;
  syncPersonFormVisibility();
@@ -801,7 +861,6 @@ function render(){
  <div class="person ${highlightPersonId===p.id?"search-highlight":""}" id="person-${p.id}">
   <div class="line">
 
-   <!-- القلم فوق النجمة -->
    <div class="person-tools">
     <button class="edit-name-btn" onclick="startEditPerson('${p.id}')"
      title="تعديل الاسم والرقم" aria-label="تعديل الاسم والرقم">
