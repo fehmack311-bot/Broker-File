@@ -65,6 +65,26 @@ h2{font-size:20px;margin:0}
 .arrow svg,.eye svg{width:18px;height:18px}
 .arrow:hover,.eye:hover{background:#f3f3f3}
 
+/* تعديل الاسم */
+.edit-name-btn{
+ background:transparent;color:#999;padding:0;
+ width:25px;height:29px;min-width:25px;
+ display:inline-flex;align-items:center;justify-content:center;
+ border-radius:6px
+}
+.edit-name-btn:hover{background:#f3f3f3;color:#555}
+.edit-name-btn svg{width:15px;height:15px}
+.name-edit-row{display:flex;align-items:center;gap:5px;min-width:0}
+.name-edit-input{
+ width:100%;min-width:0;padding:5px 7px;
+ border:1px solid #ddd;border-radius:6px;outline:none;
+ font-size:13px
+}
+.name-edit-done{
+ background:#edf5ef;color:#39754a;
+ padding:6px 9px;font-size:11px;white-space:nowrap
+}
+
 .call{
  background:transparent;color:#666;padding:0;width:29px;height:29px;min-width:29px;
  display:inline-flex;align-items:center;justify-content:center;border-radius:6px;
@@ -105,7 +125,6 @@ h2{font-size:20px;margin:0}
 .actions button{flex:1}
 .empty{text-align:center;color:#999;padding:25px 10px;background:#fafafa;border-radius:8px}
 
-/* الفلترة */
 .filter-wrap{margin:14px 0 8px}
 .filters{display:flex;gap:7px;flex-wrap:wrap}
 .filter-btn{
@@ -305,6 +324,9 @@ let pendingCallId="";
 let callPageWasHidden=false;
 let callResultShown=false;
 
+/* تعديل الاسم */
+let editingPersonId="";
+
 /* كل مجموعة تحتفظ بفلترها الخاص */
 let groupFilters={};
 
@@ -407,6 +429,7 @@ async function logout(){
  groupFilters={};
  personFormGroupId="";
  pendingCallId="";
+ editingPersonId="";
  document.getElementById("appScreen").style.display="none";
  document.getElementById("authScreen").style.display="block";
  document.getElementById("password").value="";
@@ -589,6 +612,43 @@ function syncPersonFormVisibility(){
  form.classList.toggle("show",!!personFormGroupId&&personFormGroupId===active);
 }
 
+/* تعديل اسم الشخص */
+function startEditPerson(id){
+ editingPersonId=id;
+ render();
+
+ const input=document.getElementById("editName-"+id);
+ if(input){
+  input.focus();
+  input.select();
+ }
+}
+
+function finishEditPerson(id){
+ const input=document.getElementById("editName-"+id);
+ if(!input)return;
+
+ const name=input.value.trim();
+
+ if(!name){
+  alert("اكتب الاسم أولاً");
+  input.focus();
+  return;
+ }
+
+ for(const g of groups){
+  const p=g.people.find(x=>x.id===id);
+  if(p){
+   p.name=name;
+   break;
+  }
+ }
+
+ editingPersonId="";
+ render();
+ persist();
+}
+
 /* حساب أعداد الفلترة للمجموعة الحالية */
 function renderFilters(){
  const group=current();
@@ -689,10 +749,26 @@ function render(){
  area.innerHTML=list.map(p=>`
  <div class="person ${highlightPersonId===p.id?"search-highlight":""}" id="person-${p.id}">
   <div class="line">
+
+   <button class="edit-name-btn" onclick="startEditPerson('${p.id}')"
+    title="تعديل الاسم" aria-label="تعديل الاسم">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+     <path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16z"/>
+    </svg>
+   </button>
+
    <button class="star ${p.favorite?"on":""}" onclick="favorite('${p.id}')">★</button>
 
    <div class="info">
-    <div class="name">${privateText(p.id,p.name)}</div>
+    ${editingPersonId===p.id?`
+     <div class="name-edit-row">
+      <input class="name-edit-input" id="editName-${p.id}"
+       value="${safe(p.name)}"
+       onkeydown="if(event.key==='Enter'){event.preventDefault();finishEditPerson('${p.id}')}">
+      <button class="name-edit-done" onclick="finishEditPerson('${p.id}')">تم</button>
+     </div>
+    `:`<div class="name" onclick="startEditPerson('${p.id}')" style="cursor:pointer">${privateText(p.id,p.name)}</div>`}
     <div class="phone">${privateText(p.id,p.phone)}</div>
    </div>
 
@@ -894,7 +970,6 @@ function openSearchResult(index){
  document.getElementById("searchPanel").classList.remove("show");
  searchResults=[];
 
- /* إظهار الشخص حتى لو كان خارج الفلتر */
  groupFilters[result.groupId]="all";
 
  render();
@@ -1252,6 +1327,7 @@ function confirmDeletePerson(){
  for(const g of groups)g.people=g.people.filter(p=>p.id!==deletePersonId);
  delete expanded[deletePersonId];
  delete revealed[deletePersonId];
+ if(editingPersonId===deletePersonId)editingPersonId="";
  closeModal();
  render();
  persist();
