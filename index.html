@@ -27,7 +27,6 @@ h2{font-size:20px;margin:0}
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
 .group-title h3{font-size:16px;margin:0}
 .group-heading{display:flex;align-items:center;gap:9px}
-.group-actions{display:flex;align-items:center;gap:8px}
 .group-delete{background:transparent;color:#999;font-size:12px}
 
 .add-person-top{
@@ -43,17 +42,16 @@ h2{font-size:20px;margin:0}
 .name{font-weight:600;overflow-wrap:anywhere;font-size:14px}
 .phone{font-size:12px;color:#888;margin-top:4px}
 
-.star,.eye,.arrow,.del,.call{
+.star,.eye,.arrow,.del{
  background:transparent;color:#666;padding:0;
  width:29px;height:29px;min-width:29px;
  display:inline-flex;align-items:center;justify-content:center;
- font-size:16px;border-radius:6px;text-decoration:none
+ font-size:16px;border-radius:6px
 }
 .star{font-size:19px;color:#aaa}
 .star.on{color:#c99a00}
 .del{font-size:19px;color:#888}
 .arrow{font-size:18px}
-.call{color:#54866a;font-size:17px}
 
 .status{font-size:11px;padding:6px 7px;white-space:nowrap;border-radius:5px}
 .none{background:#f7eeee;color:#9b4545}
@@ -79,10 +77,6 @@ h2{font-size:20px;margin:0}
 .child .name{font-size:13px}
 .child-add{font-size:12px;margin-top:8px;background:#f5f5f5;color:#444}
 
-.add-person{
- width:100%;background:#f7f7f7;margin-top:12px;padding:12px 14px;
- color:#444;display:flex;align-items:center;justify-content:space-between;text-align:right
-}
 .form{display:none;background:#fff;padding:12px;border:1px solid #eee;border-radius:8px;margin:10px 0}
 .form.show{display:block}
 .form input,.auth-card input,.modal input{
@@ -132,8 +126,7 @@ h2{font-size:20px;margin:0}
 .person.search-highlight .star,
 .person.search-highlight .eye,
 .person.search-highlight .arrow,
-.person.search-highlight .del,
-.person.search-highlight .call{color:#666}
+.person.search-highlight .del{color:#666}
 .person.search-highlight .children{border-right-color:#ddd}
 .person.search-highlight .child{border-bottom-color:#e5e5e5}
 
@@ -177,7 +170,7 @@ h2{font-size:20px;margin:0}
  body{padding:11px}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
- .star,.eye,.arrow,.del,.call{width:27px;min-width:27px}
+ .star,.eye,.arrow,.del{width:27px;min-width:27px}
  .group-delete{font-size:11px}
 }
 </style>
@@ -579,9 +572,8 @@ function render(){
     <div class="phone">${privateText(p.id,p.phone)}</div>
    </div>
    ${statusButton(p.id,p.status,false)}
-   ${eyeButton(p.id)}
-   ${phoneButton(p.phone)}
    <button class="arrow" onclick="toggleChildren('${p.id}')">${expanded[p.id]?"⌃":"⌄"}</button>
+   ${eyeButton(p.id)}
    <button class="del" onclick="askDeletePerson('${p.id}')">×</button>
   </div>
 
@@ -595,7 +587,6 @@ function render(){
      </div>
      ${statusButton(c.id,c.status,true)}
      ${eyeButton(c.id)}
-     ${phoneButton(c.phone)}
      <button class="del" onclick="askDeleteChild('${c.id}')">×</button>
     </div>
    `).join("")}
@@ -769,12 +760,6 @@ function privateText(id,value){
 
 function eyeButton(id){
  return `<button class="eye" onclick="toggleEye('${id}')">👁</button>`;
-}
-
-function phoneButton(phone){
- const number=String(phone||"").replace(/[^\d+]/g,"");
- if(!/^\+?\d{7,15}$/.test(number))return "";
- return `<a class="call" href="tel:${safe(number)}" title="اتصال" aria-label="اتصال">☎</a>`;
 }
 
 function toggleEye(id){
