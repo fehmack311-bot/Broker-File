@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -59,30 +58,47 @@ h2{font-size:20px;margin:0}
  background:transparent;color:#666;padding:0;width:29px;height:29px;min-width:29px;
  display:inline-flex;align-items:center;justify-content:center;border-radius:6px
 }
-.star{font-size:19px;color:#aaa}
+
+/* النجمة صغيرة */
+.star{
+ width:23px;height:23px;min-width:23px;
+ font-size:16px;color:#aaa
+}
 .star.on{color:#c99a00}
+
 .del{font-size:19px;color:#888}
 .arrow svg,.eye svg{width:18px;height:18px}
 .arrow:hover,.eye:hover{background:#f3f3f3}
 
-/* تعديل الاسم */
+/* زر تعديل صغير قبل النجمة */
 .edit-name-btn{
  background:transparent;color:#999;padding:0;
- width:25px;height:29px;min-width:25px;
+ width:23px;height:23px;min-width:23px;
  display:inline-flex;align-items:center;justify-content:center;
  border-radius:6px
 }
 .edit-name-btn:hover{background:#f3f3f3;color:#555}
-.edit-name-btn svg{width:15px;height:15px}
-.name-edit-row{display:flex;align-items:center;gap:5px;min-width:0}
-.name-edit-input{
- width:100%;min-width:0;padding:5px 7px;
- border:1px solid #ddd;border-radius:6px;outline:none;
- font-size:13px
+.edit-name-btn svg{width:13px;height:13px}
+
+/* حقول تعديل الاسم والرقم */
+.name-edit-row{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ gap:6px;
+ min-width:0;
+ width:100%;
 }
+.name-edit-input{
+ width:100%;min-width:0;padding:8px;
+ border:1px solid #ddd;border-radius:6px;outline:none;
+ font-size:13px;background:#fff
+}
+.name-edit-input:focus{border-color:#aaa}
 .name-edit-done{
  background:#edf5ef;color:#39754a;
- padding:6px 9px;font-size:11px;white-space:nowrap
+ padding:7px 12px;font-size:12px;white-space:nowrap;
+ width:100%
 }
 
 .call{
@@ -210,7 +226,9 @@ h2{font-size:20px;margin:0}
  body{padding:11px}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
- .star,.eye,.arrow,.del,.call{width:27px;min-width:27px}
+ .star{width:23px;min-width:23px;height:23px}
+ .edit-name-btn{width:23px;min-width:23px;height:23px}
+ .eye,.arrow,.del,.call{width:27px;min-width:27px}
  .group-tab-wrap{gap:8px;padding:4px 8px}
  .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
  .add-person-circle{width:29px;height:29px;min-width:29px}
@@ -324,7 +342,7 @@ let pendingCallId="";
 let callPageWasHidden=false;
 let callResultShown=false;
 
-/* تعديل الاسم */
+/* تعديل بيانات الشخص */
 let editingPersonId="";
 
 /* كل مجموعة تحتفظ بفلترها الخاص */
@@ -612,37 +630,59 @@ function syncPersonFormVisibility(){
  form.classList.toggle("show",!!personFormGroupId&&personFormGroupId===active);
 }
 
-/* تعديل اسم الشخص */
+/* بدء تعديل الاسم ورقم الجوال */
 function startEditPerson(id){
  editingPersonId=id;
  render();
 
- const input=document.getElementById("editName-"+id);
- if(input){
-  input.focus();
-  input.select();
+ const nameInput=document.getElementById("editName-"+id);
+ if(nameInput){
+  nameInput.focus();
+  nameInput.select();
  }
 }
 
+/* حفظ الاسم ورقم الجوال مع بعض */
 function finishEditPerson(id){
- const input=document.getElementById("editName-"+id);
- if(!input)return;
+ const nameInput=document.getElementById("editName-"+id);
+ const phoneInput=document.getElementById("editPhone-"+id);
 
- const name=input.value.trim();
+ if(!nameInput||!phoneInput)return;
+
+ const name=nameInput.value.trim();
+ const phone=phoneInput.value.trim();
 
  if(!name){
   alert("اكتب الاسم أولاً");
-  input.focus();
+  nameInput.focus();
   return;
  }
+
+ if(!phone){
+  alert("اكتب رقم الجوال");
+  phoneInput.focus();
+  return;
+ }
+
+ if(!/^[0-9]+$/.test(phone)){
+  alert("رقم الجوال لازم يكون بالأرقام الإنجليزية فقط (0-9)");
+  phoneInput.focus();
+  return;
+ }
+
+ let found=false;
 
  for(const g of groups){
   const p=g.people.find(x=>x.id===id);
   if(p){
    p.name=name;
+   p.phone=phone;
+   found=true;
    break;
   }
  }
+
+ if(!found)return;
 
  editingPersonId="";
  render();
@@ -750,8 +790,9 @@ function render(){
  <div class="person ${highlightPersonId===p.id?"search-highlight":""}" id="person-${p.id}">
   <div class="line">
 
+   <!-- زر التعديل قبل النجمة -->
    <button class="edit-name-btn" onclick="startEditPerson('${p.id}')"
-    title="تعديل الاسم" aria-label="تعديل الاسم">
+    title="تعديل الاسم والرقم" aria-label="تعديل الاسم والرقم">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
      <path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16z"/>
@@ -765,11 +806,23 @@ function render(){
      <div class="name-edit-row">
       <input class="name-edit-input" id="editName-${p.id}"
        value="${safe(p.name)}"
+       placeholder="اسم الشخص"
+       onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('editPhone-${p.id}').focus()}">
+
+      <input class="name-edit-input" id="editPhone-${p.id}"
+       value="${safe(p.phone)}"
+       placeholder="رقم الجوال"
+       type="tel"
+       inputmode="numeric"
+       oninput="this.value=this.value.replace(/[^0-9]/g,'')"
        onkeydown="if(event.key==='Enter'){event.preventDefault();finishEditPerson('${p.id}')}">
+
       <button class="name-edit-done" onclick="finishEditPerson('${p.id}')">تم</button>
      </div>
-    `:`<div class="name" onclick="startEditPerson('${p.id}')" style="cursor:pointer">${privateText(p.id,p.name)}</div>`}
-    <div class="phone">${privateText(p.id,p.phone)}</div>
+    `:`
+     <div class="name" onclick="startEditPerson('${p.id}')" style="cursor:pointer">${privateText(p.id,p.name)}</div>
+     <div class="phone">${privateText(p.id,p.phone)}</div>
+    `}
    </div>
 
    ${statusButton(p.id,p.status,false)}
