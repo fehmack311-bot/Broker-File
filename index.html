@@ -19,27 +19,41 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 h2{font-size:20px;margin:0}
 .dark,.save{background:#eee;color:#333}
 .cancel{background:#f1f1f1;color:#444}
-.groups{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-.tab{background:#f6f6f6;color:#444}
-.tab.active{background:#e5e5e5;color:#333}
-.add-group{background:#eee;color:#333}
 
-/* دائرة إضافة شخص داخل نفس مربع المجموعات */
+.groups{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+
+/* المجموعة وأيقونة الشخص داخل نفس الإطار */
+.group-tab-wrap{
+ display:inline-flex;
+ align-items:center;
+ gap:5px;
+ padding:4px 6px;
+ background:#f6f6f6;
+ border:1px solid #ededed;
+ border-radius:10px;
+}
+.group-tab-wrap.active{background:#e5e5e5}
+.group-tab-wrap .tab{
+ background:transparent;
+ color:#444;
+ padding:7px 8px;
+}
+.group-tab-wrap.active .tab{color:#222;font-weight:bold}
 .add-person-circle{
- width:34px;
- height:34px;
- min-width:34px;
+ width:31px;
+ height:31px;
+ min-width:31px;
  padding:0;
  border-radius:50%;
- background:#e9e9e9;
- color:#666;
- font-size:23px;
- font-weight:normal;
+ background:#dedede;
+ color:#555;
  display:inline-flex;
  align-items:center;
  justify-content:center;
- line-height:1;
 }
+.add-person-circle:hover{background:#d2d2d2}
+.add-person-circle svg{width:19px;height:19px}
+.add-group{background:#eee;color:#333}
 
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
 .group-title h3{font-size:16px;margin:0}
@@ -182,6 +196,9 @@ h2{font-size:20px;margin:0}
  .status{font-size:10px;padding:5px}
  .star,.eye,.arrow,.del{width:27px;min-width:27px}
  .group-delete{font-size:11px}
+ .group-tab-wrap{gap:3px;padding:3px 5px}
+ .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
+ .add-person-circle{width:29px;height:29px;min-width:29px}
 }
 </style>
 </head>
@@ -281,6 +298,9 @@ let highlightPersonId="";
 let highlightTimer=null;
 let successTimer=null;
 
+/* المجموعة المحددة لإضافة الشخص */
+let personFormGroupId="";
+
 function uid(){return crypto.randomUUID()}
 function newGroup(name){return{id:uid(),name,people:[]}}
 
@@ -355,6 +375,7 @@ async function logout(){
  currentUser=null;
  groups=[];
  active="";
+ personFormGroupId="";
  document.getElementById("appScreen").style.display="none";
  document.getElementById("authScreen").style.display="block";
  document.getElementById("password").value="";
@@ -545,11 +566,25 @@ function render(){
  if(!groups.some(g=>g.id===active))active=groups[0].id;
 
  document.getElementById("groups").innerHTML=
-  groups.map(g=>
-   `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
-  ).join("")+
-  `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`+
-  `<button class="add-person-circle" onclick="togglePersonForm()" title="إضافة شخص" aria-label="إضافة شخص">+</button>`;
+  groups.map(g=>`
+   <div class="group-tab-wrap ${g.id===active?"active":""}">
+    <button class="tab" onclick="selectGroup('${g.id}')">
+     ${safe(g.name)}
+    </button>
+    <button class="add-person-circle"
+     onclick="addPersonToGroup('${g.id}')"
+     title="إضافة شخص"
+     aria-label="إضافة شخص">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="10" cy="7" r="4"/>
+      <path d="M19 8v6M16 11h6"/>
+     </svg>
+    </button>
+   </div>
+  `).join("")+
+  `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`;
 
  document.getElementById("groupTitle").textContent=current().name;
 
@@ -736,7 +771,6 @@ function openSearchResult(index){
 
  if(highlightTimer)clearTimeout(highlightTimer);
 
- // إغلاق البحث ومسح نصه فقط، بدون حذف الشخص أو نقله
  input.value="";
  searchFocused=false;
  document.getElementById("searchPanel").classList.remove("show");
@@ -793,6 +827,19 @@ function statusButton(id,value,isChild=false){
 function selectGroup(id){
  active=id;
  render();
+}
+
+/* الضغط على أيقونة شخص+ يحدد المجموعة المقصودة */
+function addPersonToGroup(groupId){
+ const group=groups.find(g=>g.id===groupId);
+ if(!group)return;
+
+ active=groupId;
+ personFormGroupId=groupId;
+ render();
+
+ document.getElementById("personForm").classList.add("show");
+ document.getElementById("personName").focus();
 }
 
 function favorite(id){
@@ -890,22 +937,18 @@ function confirmDeleteGroup(){
  persist();
 }
 
-// إضافة شخص
+// نموذج إضافة شخص
 function openPersonForm(){
+ if(!personFormGroupId)personFormGroupId=active;
  document.getElementById("personForm").classList.add("show");
  document.getElementById("personName").focus();
-}
-
-function togglePersonForm(){
- const f=document.getElementById("personForm");
- if(f.classList.contains("show"))closePersonForm();
- else openPersonForm();
 }
 
 function closePersonForm(){
  document.getElementById("personForm").classList.remove("show");
  document.getElementById("personName").value="";
  document.getElementById("personPhone").value="";
+ personFormGroupId="";
 }
 
 function savePerson(){
@@ -917,10 +960,18 @@ function savePerson(){
   return;
  }
 
- current().people.unshift({
+ const targetGroup=groups.find(g=>g.id===(personFormGroupId||active));
+
+ if(!targetGroup){
+  alert("المجموعة غير موجودة");
+  return;
+ }
+
+ targetGroup.people.unshift({
   id:uid(),name,phone,status:0,favorite:false,children:[]
  });
 
+ active=targetGroup.id;
  closePersonForm();
  render();
  persist();
