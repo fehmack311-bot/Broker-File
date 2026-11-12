@@ -11,29 +11,24 @@
 *{box-sizing:border-box}
 body{margin:0;background:#fff;color:#222;font-family:Arial,sans-serif;padding:14px}
 button,input{font:inherit}
-button{border:0;border-radius:7px;padding:9px 11px;cursor:pointer}
+button{border:0;border-radius:7px;padding:9px 11px;cursor:pointer;transition:background .15s,color .15s}
 button:disabled{opacity:.5;cursor:not-allowed}
+button:active{background:#e5e5e5!important;color:#333!important}
 .app{max-width:650px;margin:auto}
 header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
 h2{font-size:20px;margin:0}
-.dark,.save{background:#222;color:#fff}
+.dark,.save{background:#eee;color:#333}
 .cancel{background:#f1f1f1;color:#444}
 .groups{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .tab{background:#f6f6f6;color:#444}
-.tab.active{background:#222;color:#fff}
+.tab.active{background:#e5e5e5;color:#333}
 .add-group{background:#eee;color:#333}
+.add-person-tab{background:#f6f6f6;color:#444}
 
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
 .group-title h3{font-size:16px;margin:0}
 .group-heading{display:flex;align-items:center;gap:9px}
 .group-delete{background:transparent;color:#999;font-size:12px}
-
-.add-person-top{
- width:34px;height:34px;min-width:34px;padding:0;
- border-radius:50%;background:#f1f2f3;color:#444;
- display:inline-flex;align-items:center;justify-content:center
-}
-.add-person-top svg{width:19px;height:19px}
 
 .person{border-bottom:1px solid #eee;padding:12px 2px;margin-bottom:3px}
 .line{display:flex;align-items:center;gap:6px}
@@ -94,7 +89,7 @@ h2{font-size:20px;margin:0}
  border-radius:8px;outline:none;background:#fafafa
 }
 .search-input:focus{border-color:#bbb;background:#fff}
-.search-button{background:#222;color:#fff;min-width:62px}
+.search-button{background:#eee;color:#333;min-width:62px}
 .search-panel{
  display:none;position:absolute;top:calc(100% + 5px);right:0;left:0;
  background:#fff;border:1px solid #e8e8e8;border-radius:9px;
@@ -115,7 +110,7 @@ h2{font-size:20px;margin:0}
 .search-remove{background:transparent;color:#999;font-size:17px;padding:2px 7px}
 .search-empty{font-size:12px;color:#999;padding:13px}
 
-/* تمييز نتيجة البحث بلون رمادي فاتح */
+/* تمييز نتيجة البحث */
 .person.search-highlight{
  background:#f1f2f4;color:#222;border-radius:9px;
  padding:12px;margin:8px 0;transition:background .3s
@@ -220,8 +215,7 @@ h2{font-size:20px;margin:0}
   <div class="search-panel" id="searchPanel"></div>
  </div>
 
- <div id="people"></div>
-
+ <!-- نموذج إضافة الشخص صار فوق قائمة الأسماء -->
  <div class="form" id="personForm">
   <input id="personName" placeholder="اسم الشخص">
   <input id="personPhone" placeholder="رقم الجوال" type="tel">
@@ -231,6 +225,7 @@ h2{font-size:20px;margin:0}
   </div>
  </div>
 
+ <div id="people"></div>
  <div id="appMessage" class="message"></div>
 </section>
 
@@ -539,14 +534,7 @@ function render(){
    `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
   ).join("")+
   `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`+
-  `<button class="add-person-top" onclick="togglePersonForm()" title="إضافة شخص" aria-label="إضافة شخص">
-   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-    <circle cx="10" cy="7" r="4"/>
-    <path d="M19 8v6M16 11h6"/>
-   </svg>
-  </button>`;
+  `<button class="tab add-person-tab" onclick="togglePersonForm()">＋ إضافة شخص</button>`;
 
  document.getElementById("groupTitle").textContent=current().name;
 
