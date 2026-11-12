@@ -59,7 +59,7 @@ h2{font-size:20px;margin:0}
  display:inline-flex;align-items:center;justify-content:center;border-radius:6px
 }
 
-/* النجمة صغيرة */
+/* النجمة */
 .star{
  width:23px;height:23px;min-width:23px;
  font-size:16px;color:#aaa
@@ -70,15 +70,32 @@ h2{font-size:20px;margin:0}
 .arrow svg,.eye svg{width:18px;height:18px}
 .arrow:hover,.eye:hover{background:#f3f3f3}
 
-/* زر تعديل صغير قبل النجمة */
+/* القلم فوق النجمة في نفس العمود */
+.person-tools{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:0;
+ width:23px;
+ min-width:23px;
+ flex-shrink:0;
+}
+
 .edit-name-btn{
  background:transparent;color:#999;padding:0;
- width:23px;height:23px;min-width:23px;
+ width:23px;height:22px;min-width:23px;
  display:inline-flex;align-items:center;justify-content:center;
  border-radius:6px
 }
 .edit-name-btn:hover{background:#f3f3f3;color:#555}
 .edit-name-btn svg{width:13px;height:13px}
+
+.person-tools .star{
+ width:23px;height:22px;min-width:23px;
+ padding:0;
+ font-size:16px;
+}
 
 /* حقول تعديل الاسم والرقم */
 .name-edit-row{
@@ -227,7 +244,7 @@ h2{font-size:20px;margin:0}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
  .star{width:23px;min-width:23px;height:23px}
- .edit-name-btn{width:23px;min-width:23px;height:23px}
+ .edit-name-btn{width:23px;min-width:23px;height:22px}
  .eye,.arrow,.del,.call{width:27px;min-width:27px}
  .group-tab-wrap{gap:8px;padding:4px 8px}
  .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
@@ -342,10 +359,7 @@ let pendingCallId="";
 let callPageWasHidden=false;
 let callResultShown=false;
 
-/* تعديل بيانات الشخص */
 let editingPersonId="";
-
-/* كل مجموعة تحتفظ بفلترها الخاص */
 let groupFilters={};
 
 function getGroupFilter(groupId){
@@ -630,7 +644,6 @@ function syncPersonFormVisibility(){
  form.classList.toggle("show",!!personFormGroupId&&personFormGroupId===active);
 }
 
-/* بدء تعديل الاسم ورقم الجوال */
 function startEditPerson(id){
  editingPersonId=id;
  render();
@@ -642,7 +655,6 @@ function startEditPerson(id){
  }
 }
 
-/* حفظ الاسم ورقم الجوال مع بعض */
 function finishEditPerson(id){
  const nameInput=document.getElementById("editName-"+id);
  const phoneInput=document.getElementById("editPhone-"+id);
@@ -689,7 +701,6 @@ function finishEditPerson(id){
  persist();
 }
 
-/* حساب أعداد الفلترة للمجموعة الحالية */
 function renderFilters(){
  const group=current();
  const filters=document.getElementById("filters");
@@ -790,16 +801,18 @@ function render(){
  <div class="person ${highlightPersonId===p.id?"search-highlight":""}" id="person-${p.id}">
   <div class="line">
 
-   <!-- زر التعديل قبل النجمة -->
-   <button class="edit-name-btn" onclick="startEditPerson('${p.id}')"
-    title="تعديل الاسم والرقم" aria-label="تعديل الاسم والرقم">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-     <path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16z"/>
-    </svg>
-   </button>
+   <!-- القلم فوق النجمة -->
+   <div class="person-tools">
+    <button class="edit-name-btn" onclick="startEditPerson('${p.id}')"
+     title="تعديل الاسم والرقم" aria-label="تعديل الاسم والرقم">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16z"/>
+     </svg>
+    </button>
 
-   <button class="star ${p.favorite?"on":""}" onclick="favorite('${p.id}')">★</button>
+    <button class="star ${p.favorite?"on":""}" onclick="favorite('${p.id}')">★</button>
+   </div>
 
    <div class="info">
     ${editingPersonId===p.id?`
