@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
-<title>دفتر التواصل</title>
+<title>مجموعاتي</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -15,14 +16,19 @@ button{border:0;border-radius:7px;padding:9px 11px;cursor:pointer;transition:bac
 button:disabled{opacity:.5;cursor:not-allowed}
 button:active{background:#e5e5e5!important;color:#333!important}
 .app{max-width:650px;margin:auto}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+header{display:flex;justify-content:flex-end;align-items:center;margin-bottom:18px}
 h2{font-size:20px;margin:0}
 .dark,.save{background:#eee;color:#333}
 .cancel{background:#f1f1f1;color:#444}
 
-.groups{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.groups{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 
-/* المجموعة وأيقونة الشخص داخل نفس الإطار */
+/* كل مجموعة لها حذف خاص فيها */
+.group-item{
+ display:inline-flex;
+ align-items:center;
+ gap:4px;
+}
 .group-tab-wrap{
  display:inline-flex;
  align-items:center;
@@ -40,25 +46,24 @@ h2{font-size:20px;margin:0}
 }
 .group-tab-wrap.active .tab{color:#222;font-weight:bold}
 .add-person-circle{
- width:31px;
- height:31px;
- min-width:31px;
- padding:0;
- border-radius:50%;
- background:#dedede;
- color:#555;
- display:inline-flex;
- align-items:center;
- justify-content:center;
+ width:31px;height:31px;min-width:31px;padding:0;
+ border-radius:50%;background:#dedede;color:#555;
+ display:inline-flex;align-items:center;justify-content:center;
 }
 .add-person-circle:hover{background:#d2d2d2}
 .add-person-circle svg{width:19px;height:19px}
+.group-delete-icon{
+ width:27px;height:29px;min-width:27px;padding:0;
+ background:transparent;color:#aaa;
+ display:inline-flex;align-items:center;justify-content:center;
+}
+.group-delete-icon:hover{background:#f8eeee;color:#a44}
+.group-delete-icon svg{width:17px;height:17px}
 .add-group{background:#eee;color:#333}
 
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
-.group-title h3{font-size:16px;margin:0}
+.group-title h3{font-size:17px;margin:0}
 .group-heading{display:flex;align-items:center;gap:9px}
-.group-delete{background:transparent;color:#999;font-size:12px}
 
 .person{border-bottom:1px solid #eee;padding:12px 2px;margin-bottom:3px}
 .line{display:flex;align-items:center;gap:6px}
@@ -161,8 +166,7 @@ h2{font-size:20px;margin:0}
  background:#eaf6ed;color:#287a43;
  border:1px solid #d4ead9;border-radius:9px;
  padding:11px 18px;font-size:13px;font-weight:bold;
- box-shadow:0 4px 15px #00000010;
- white-space:nowrap
+ box-shadow:0 4px 15px #00000010;white-space:nowrap
 }
 .success-toast.show{display:block}
 
@@ -173,7 +177,7 @@ h2{font-size:20px;margin:0}
 .modal-bg.show{display:flex}
 .modal{background:#fff;border-radius:10px;padding:17px;width:100%;max-width:330px}
 .modal h3{margin:0 0 12px;font-size:16px}
-.modal p{font-size:14px;color:#666}
+.modal p{font-size:14px;color:#666;line-height:1.7}
 .modal-actions{display:flex;gap:8px;margin-top:12px}
 .modal-actions button{flex:1}
 
@@ -195,7 +199,6 @@ h2{font-size:20px;margin:0}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
  .star,.eye,.arrow,.del{width:27px;min-width:27px}
- .group-delete{font-size:11px}
  .group-tab-wrap{gap:3px;padding:3px 5px}
  .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
  .add-person-circle{width:29px;height:29px;min-width:29px}
@@ -210,7 +213,7 @@ h2{font-size:20px;margin:0}
 
 <section id="authScreen">
  <div class="auth-card">
-  <h2>دفتر التواصل</h2>
+  <h2>تسجيل الدخول</h2>
   <p class="muted" id="authDescription">سجّل دخولك عشان تحفظ بياناتك وتوصل لها من أي جهاز.</p>
   <input id="email" type="email" placeholder="البريد الإلكتروني" autocomplete="email">
   <input id="password" type="password" placeholder="كلمة المرور" autocomplete="current-password">
@@ -222,10 +225,9 @@ h2{font-size:20px;margin:0}
 
 <section class="app" id="appScreen">
  <header>
-  <h2>دفتر التواصل</h2>
   <div id="userBar">
    <span id="userEmail"></span>
-   <button onclick="logout()">خروج</button>
+   <button onclick="askLogout()">خروج</button>
   </div>
  </header>
 
@@ -235,7 +237,6 @@ h2{font-size:20px;margin:0}
   <div class="group-heading">
    <h3 id="groupTitle"></h3>
   </div>
-  <button class="group-delete" onclick="askDeleteGroup()">× حذف المجموعة</button>
  </div>
 
  <div class="search-wrap">
@@ -250,7 +251,7 @@ h2{font-size:20px;margin:0}
 
  <div class="form" id="personForm">
   <input id="personName" placeholder="اسم الشخص">
-  <input id="personPhone" placeholder="رقم الجوال" type="tel">
+  <input id="personPhone" placeholder="رقم الجوال">
   <div class="actions">
    <button class="save" onclick="savePerson()">إضافة</button>
    <button class="cancel" onclick="closePersonForm()">إلغاء</button>
@@ -298,8 +299,9 @@ let highlightPersonId="";
 let highlightTimer=null;
 let successTimer=null;
 
-/* المجموعة المحددة لإضافة الشخص */
+/* المجموعة التي تخصها خانة إضافة الشخص */
 let personFormGroupId="";
+let deleteGroupId="";
 
 function uid(){return crypto.randomUUID()}
 function newGroup(name){return{id:uid(),name,people:[]}}
@@ -321,9 +323,7 @@ function showSuccessToast(){
  const toast=document.getElementById("successToast");
  toast.classList.add("show");
  if(successTimer)clearTimeout(successTimer);
- successTimer=setTimeout(()=>{
-  toast.classList.remove("show");
- },3000);
+ successTimer=setTimeout(()=>toast.classList.remove("show"),3000);
 }
 
 function toggleAuthMode(){
@@ -348,12 +348,9 @@ async function handleAuth(){
  showMessage("جاري التحقق...");
 
  try{
-  let result;
-  if(isSignup){
-   result=await db.auth.signUp({email,password});
-  }else{
-   result=await db.auth.signInWithPassword({email,password});
-  }
+  let result=isSignup?
+   await db.auth.signUp({email,password}):
+   await db.auth.signInWithPassword({email,password});
 
   if(result.error)throw result.error;
 
@@ -368,6 +365,23 @@ async function handleAuth(){
  }finally{
   btn.disabled=false;
  }
+}
+
+/* تأكيد تسجيل الخروج */
+function askLogout(){
+ showModal(`
+  <h3>تأكيد الخروج</h3>
+  <p>متأكد إنك تبي تسجل خروج من حسابك؟</p>
+  <div class="modal-actions">
+   <button class="save" onclick="confirmLogout()">نعم، خروج</button>
+   <button class="cancel" onclick="closeModal()">إلغاء</button>
+  </div>
+ `);
+}
+
+async function confirmLogout(){
+ closeModal();
+ await logout();
 }
 
 async function logout(){
@@ -493,7 +507,6 @@ function snapshot(){
 
 function persist(){
  if(!currentUser)return;
-
  const data=snapshot();
 
  saveQueue=saveQueue.then(()=>saveSnapshot(data)).catch(e=>{
@@ -512,16 +525,11 @@ async function saveSnapshot(data){
  const ps=gs.flatMap(g=>g.people.map(p=>({...p,group_id:g.id})));
  const cs=ps.flatMap(p=>p.children.map(c=>({...c,person_id:p.id})));
 
- const groupRows=gs.map(g=>({
-  id:g.id,owner_id:owner,name:g.name
- }));
-
+ const groupRows=gs.map(g=>({id:g.id,owner_id:owner,name:g.name}));
  const peopleRows=ps.map(p=>({
   id:p.id,owner_id:owner,group_id:p.group_id,
-  name:p.name,phone:p.phone,status:p.status,
-  favorite:!!p.favorite
+  name:p.name,phone:p.phone,status:p.status,favorite:!!p.favorite
  }));
-
  const childRows=cs.map(c=>({
   id:c.id,owner_id:owner,person_id:c.person_id,
   name:c.name,phone:c.phone,status:c.status
@@ -531,12 +539,10 @@ async function saveSnapshot(data){
   const r=await db.from("dc_groups").upsert(groupRows);
   if(r.error)throw r.error;
  }
-
  if(peopleRows.length){
   const r=await db.from("dc_people").upsert(peopleRows);
   if(r.error)throw r.error;
  }
-
  if(childRows.length){
   const r=await db.from("dc_children").upsert(childRows);
   if(r.error)throw r.error;
@@ -561,32 +567,51 @@ function current(){
  return groups.find(g=>g.id===active)||groups[0];
 }
 
+/* إظهار نموذج الإضافة فقط عند الرجوع لمجموعته */
+function syncPersonFormVisibility(){
+ const form=document.getElementById("personForm");
+ if(!form)return;
+ form.classList.toggle("show",!!personFormGroupId&&personFormGroupId===active);
+}
+
 function render(){
  if(!groups.length)groups=[newGroup("المجموعة الأولى")];
  if(!groups.some(g=>g.id===active))active=groups[0].id;
 
  document.getElementById("groups").innerHTML=
   groups.map(g=>`
-   <div class="group-tab-wrap ${g.id===active?"active":""}">
-    <button class="tab" onclick="selectGroup('${g.id}')">
-     ${safe(g.name)}
-    </button>
-    <button class="add-person-circle"
-     onclick="addPersonToGroup('${g.id}')"
-     title="إضافة شخص"
-     aria-label="إضافة شخص">
+   <div class="group-item">
+    <button class="group-delete-icon"
+     onclick="askDeleteGroup('${g.id}')"
+     title="حذف المجموعة" aria-label="حذف المجموعة">
      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="10" cy="7" r="4"/>
-      <path d="M19 8v6M16 11h6"/>
+      <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6"/>
+      <path d="M10 11v5M14 11v5"/>
      </svg>
     </button>
+
+    <div class="group-tab-wrap ${g.id===active?"active":""}">
+     <button class="tab" onclick="selectGroup('${g.id}')">
+      ${safe(g.name)}
+     </button>
+     <button class="add-person-circle"
+      onclick="addPersonToGroup('${g.id}')"
+      title="إضافة شخص" aria-label="إضافة شخص">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+       <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+       <circle cx="10" cy="7" r="4"/>
+       <path d="M19 8v6M16 11h6"/>
+      </svg>
+     </button>
+    </div>
    </div>
   `).join("")+
   `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`;
 
  document.getElementById("groupTitle").textContent=current().name;
+ syncPersonFormVisibility();
 
  const list=[...current().people].sort((a,b)=>
   Number(!!b.favorite)-Number(!!a.favorite)
@@ -645,7 +670,7 @@ function render(){
  renderSearchPanel();
 }
 
-/* سجل البحث محفوظ على نفس الجهاز ولكل حساب سجل مستقل */
+/* البحث */
 function searchHistoryKey(){
  return "dcSearchHistory:"+((currentUser&&currentUser.id)||"guest");
 }
@@ -829,15 +854,25 @@ function selectGroup(id){
  render();
 }
 
-/* الضغط على أيقونة شخص+ يحدد المجموعة المقصودة */
 function addPersonToGroup(groupId){
  const group=groups.find(g=>g.id===groupId);
  if(!group)return;
 
- active=groupId;
- personFormGroupId=groupId;
- render();
+ /* إذا ضغطت + مرة ثانية لنفس المجموعة، يخفي النموذج */
+ if(personFormGroupId===groupId){
+  const form=document.getElementById("personForm");
+  if(form.classList.contains("show")){
+   form.classList.remove("show");
+   return;
+  }
+ }else{
+  personFormGroupId=groupId;
+  document.getElementById("personName").value="";
+  document.getElementById("personPhone").value="";
+ }
 
+ active=groupId;
+ render();
  document.getElementById("personForm").classList.add("show");
  document.getElementById("personName").focus();
 }
@@ -859,11 +894,9 @@ function toggleChildren(id){
 function toggleStatus(id){
  const menu=document.getElementById("status-"+id);
  if(!menu)return;
-
  document.querySelectorAll(".status-list").forEach(x=>{
   if(x!==menu)x.classList.remove("show");
  });
-
  menu.classList.toggle("show");
 }
 
@@ -875,7 +908,6 @@ function setStatus(id,value,isChild){
    persist();
    return;
   }
-
   if(isChild){
    const c=p.children.find(x=>x.id===id);
    if(c){
@@ -888,7 +920,7 @@ function setStatus(id,value,isChild){
  }
 }
 
-// إضافة مجموعة
+/* إضافة مجموعة */
 function openGroupForm(){
  showModal(`
   <h3>إضافة مجموعة</h3>
@@ -898,18 +930,13 @@ function openGroupForm(){
    <button class="cancel" onclick="closeModal()">إلغاء</button>
   </div>
  `);
-
  document.getElementById("newGroupName").focus();
 }
 
 function saveGroup(){
  const input=document.getElementById("newGroupName");
  const name=input.value.trim();
-
- if(!name){
-  input.focus();
-  return;
- }
+ if(!name){input.focus();return}
 
  const group=newGroup(name);
  groups.push(group);
@@ -920,27 +947,45 @@ function saveGroup(){
  persist();
 }
 
-function askDeleteGroup(){
+/* حذف المجموعة من علامة الحذف الموجودة بجانبها */
+function askDeleteGroup(groupId){
+ deleteGroupId=groupId;
+ const group=groups.find(g=>g.id===groupId);
+ if(!group)return;
+
  if(groups.length===1){
   showModal('<h3>تنبيه</h3><p>لازم تخلي مجموعة واحدة على الأقل.</p><button class="dark" onclick="closeModal()">حسنًا</button>');
   return;
  }
 
- askConfirm("تبي تحذف المجموعة وكل الأسماء الموجودة فيها؟","confirmDeleteGroup()");
+ showModal(`
+  <h3>حذف المجموعة</h3>
+  <p>متأكد تبي تحذف مجموعة «${safe(group.name)}» وكل الأسماء الموجودة فيها؟</p>
+  <div class="modal-actions">
+   <button class="save" onclick="confirmDeleteGroup()">نعم، احذف</button>
+   <button class="cancel" onclick="closeModal()">إلغاء</button>
+  </div>
+ `);
 }
 
 function confirmDeleteGroup(){
- groups=groups.filter(g=>g.id!==active);
- active=groups[0].id;
+ const removedId=deleteGroupId;
+ groups=groups.filter(g=>g.id!==removedId);
+
+ if(active===removedId)active=groups[0].id;
+
+ if(personFormGroupId===removedId)closePersonForm();
+
+ deleteGroupId="";
  closeModal();
  render();
  persist();
 }
 
-// نموذج إضافة شخص
+/* إضافة شخص */
 function openPersonForm(){
  if(!personFormGroupId)personFormGroupId=active;
- document.getElementById("personForm").classList.add("show");
+ syncPersonFormVisibility();
  document.getElementById("personName").focus();
 }
 
@@ -961,7 +1006,6 @@ function savePerson(){
  }
 
  const targetGroup=groups.find(g=>g.id===(personFormGroupId||active));
-
  if(!targetGroup){
   alert("المجموعة غير موجودة");
   return;
@@ -986,13 +1030,9 @@ function askDeletePerson(id){
 }
 
 function confirmDeletePerson(){
- for(const g of groups){
-  g.people=g.people.filter(p=>p.id!==deletePersonId);
- }
-
+ for(const g of groups)g.people=g.people.filter(p=>p.id!==deletePersonId);
  delete expanded[deletePersonId];
  delete revealed[deletePersonId];
-
  closeModal();
  render();
  persist();
@@ -1032,7 +1072,6 @@ function confirmDeleteChild(){
  for(const g of groups)for(const p of g.people){
   p.children=p.children.filter(c=>c.id!==deleteChildId);
  }
-
  delete revealed[deleteChildId];
  closeModal();
  render();
