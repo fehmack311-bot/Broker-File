@@ -23,7 +23,23 @@ h2{font-size:20px;margin:0}
 .tab{background:#f6f6f6;color:#444}
 .tab.active{background:#e5e5e5;color:#333}
 .add-group{background:#eee;color:#333}
-.add-person-tab{background:#f6f6f6;color:#444}
+
+/* دائرة إضافة شخص داخل نفس مربع المجموعات */
+.add-person-circle{
+ width:34px;
+ height:34px;
+ min-width:34px;
+ padding:0;
+ border-radius:50%;
+ background:#e9e9e9;
+ color:#666;
+ font-size:23px;
+ font-weight:normal;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ line-height:1;
+}
 
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
 .group-title h3{font-size:16px;margin:0}
@@ -215,7 +231,6 @@ h2{font-size:20px;margin:0}
   <div class="search-panel" id="searchPanel"></div>
  </div>
 
- <!-- نموذج إضافة الشخص صار فوق قائمة الأسماء -->
  <div class="form" id="personForm">
   <input id="personName" placeholder="اسم الشخص">
   <input id="personPhone" placeholder="رقم الجوال" type="tel">
@@ -534,7 +549,7 @@ function render(){
    `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
   ).join("")+
   `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`+
-  `<button class="tab add-person-tab" onclick="togglePersonForm()">＋ إضافة شخص</button>`;
+  `<button class="add-person-circle" onclick="togglePersonForm()" title="إضافة شخص" aria-label="إضافة شخص">+</button>`;
 
  document.getElementById("groupTitle").textContent=current().name;
 
@@ -712,14 +727,21 @@ function openSearchResult(index){
  const result=searchResults[index];
  if(!result)return;
 
- addSearchHistory(document.getElementById("searchInput").value.trim());
+ const input=document.getElementById("searchInput");
+ addSearchHistory(input.value.trim());
+
  active=result.groupId;
  expanded[result.personId]=true;
  highlightPersonId=result.personId;
 
  if(highlightTimer)clearTimeout(highlightTimer);
 
+ // إغلاق البحث ومسح نصه فقط، بدون حذف الشخص أو نقله
+ input.value="";
  searchFocused=false;
+ document.getElementById("searchPanel").classList.remove("show");
+ searchResults=[];
+
  render();
 
  requestAnimationFrame(()=>{
