@@ -90,6 +90,23 @@ h2{font-size:20px;margin:0}
 .arrow svg,.eye svg{width:18px;height:18px}
 .arrow:hover,.eye:hover{background:#f3f3f3}
 
+/* زر الاتصال */
+.call{
+ background:transparent;
+ color:#666;
+ padding:0;
+ width:29px;
+ height:29px;
+ min-width:29px;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ border-radius:6px;
+ text-decoration:none;
+ font-size:17px;
+}
+.call:hover{background:#edf5ef;color:#39754a}
+
 .status{font-size:11px;padding:6px 7px;white-space:nowrap;border-radius:5px}
 .none{background:#f7eeee;color:#9b4545}
 .done{background:#edf5ef;color:#39754a}
@@ -203,7 +220,7 @@ h2{font-size:20px;margin:0}
  body{padding:11px}
  .line{gap:4px}
  .status{font-size:10px;padding:5px}
- .star,.eye,.arrow,.del{width:27px;min-width:27px}
+ .star,.eye,.arrow,.del,.call{width:27px;min-width:27px}
  .group-tab-wrap{gap:8px;padding:4px 8px}
  .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
  .add-person-circle{width:29px;height:29px;min-width:29px}
@@ -320,7 +337,6 @@ function safe(s){
 function showMessage(msg,error=false){
  const appVisible=document.getElementById("appScreen").style.display==="block";
 
- // رسائل تسجيل الدخول فقط، بدون رسائل أسفل التطبيق
  if(appVisible)return;
 
  const el=document.getElementById("authMessage");
@@ -454,6 +470,7 @@ async function enterApp(user){
  }catch(e){
   document.getElementById("busy").style.display="none";
   console.error("Load error:",e);
+  alert("تعذر تحميل البيانات: "+(e.message||"حدث خطأ"));
  }
 }
 
@@ -619,9 +636,15 @@ function render(){
  document.getElementById("groupTitle").textContent=current().name;
  syncPersonFormVisibility();
 
- const list=[...current().people].sort((a,b)=>
-  Number(!!b.favorite)-Number(!!a.favorite)
- );
+ /* الأشخاص الذين تم التواصل معهم ينزلون لآخر القائمة */
+ const list=[...current().people].sort((a,b)=>{
+  const aDone=a.status===1?1:0;
+  const bDone=b.status===1?1:0;
+
+  if(aDone!==bDone)return aDone-bDone;
+
+  return Number(!!b.favorite)-Number(!!a.favorite);
+ });
 
  const area=document.getElementById("people");
 
@@ -635,15 +658,21 @@ function render(){
  <div class="person ${highlightPersonId===p.id?"search-highlight":""}" id="person-${p.id}">
   <div class="line">
    <button class="star ${p.favorite?"on":""}" onclick="favorite('${p.id}')">★</button>
+
    <div class="info">
     <div class="name">${privateText(p.id,p.name)}</div>
     <div class="phone">${privateText(p.id,p.phone)}</div>
    </div>
+
    ${statusButton(p.id,p.status,false)}
+
    <button class="arrow" onclick="toggleChildren('${p.id}')" title="عرض الأسماء التابعة">
     ${arrowIcon(expanded[p.id])}
    </button>
+
+   ${callButton(p.id,p.phone)}
    ${eyeButton(p.id)}
+
    <button class="del" onclick="askDeletePerson('${p.id}')">×</button>
   </div>
 
@@ -868,6 +897,42 @@ document.addEventListener("click",function(event){
 
 function privateText(id,value){
  return revealed[id]===false?"****":safe(value);
+}
+
+/* زر الاتصال */
+function callButton(id,phone){
+ if(revealed[id]===false)return "";
+
+ const number=String(phone||"").replace(/[^0-9]/g,"");
+ if(!number)return "";
+
+ return `
+  <a class="call"
+   href="tel:${safe(number)}"
+   onclick="markCalled('${id}')"
+   title="اتصال"
+   aria-label="اتصال">📞</a>
+ `;
+}
+
+/* تحديث الحالة ونقل الشخص لآخر القائمة */
+function markCalled(id){
+ const group=current();
+ if(!group)return;
+
+ const p=group.people.find(x=>x.id===id);
+ if(!p)return;
+
+ p.status=1;
+
+ const index=group.people.findIndex(x=>x.id===id);
+ if(index!==-1){
+  const person=group.people.splice(index,1)[0];
+  group.people.push(person);
+ }
+
+ persist();
+ render();
 }
 
 function eyeButton(id){
