@@ -23,16 +23,11 @@ h2{font-size:20px;margin:0}
 
 .groups{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 
-/* كل مجموعة لها حذف خاص فيها */
-.group-item{
- display:inline-flex;
- align-items:center;
- gap:4px;
-}
+/* إطار المجموعة: الاسم والإضافة والحذف كلها داخله */
 .group-tab-wrap{
  display:inline-flex;
  align-items:center;
- gap:5px;
+ gap:4px;
  padding:4px 6px;
  background:#f6f6f6;
  border:1px solid #ededed;
@@ -45,6 +40,7 @@ h2{font-size:20px;margin:0}
  padding:7px 8px;
 }
 .group-tab-wrap.active .tab{color:#222;font-weight:bold}
+
 .add-person-circle{
  width:31px;height:31px;min-width:31px;padding:0;
  border-radius:50%;background:#dedede;color:#555;
@@ -52,13 +48,15 @@ h2{font-size:20px;margin:0}
 }
 .add-person-circle:hover{background:#d2d2d2}
 .add-person-circle svg{width:19px;height:19px}
+
 .group-delete-icon{
- width:27px;height:29px;min-width:27px;padding:0;
+ width:29px;height:29px;min-width:29px;padding:0;
  background:transparent;color:#aaa;
  display:inline-flex;align-items:center;justify-content:center;
+ border-radius:7px;
 }
 .group-delete-icon:hover{background:#f8eeee;color:#a44}
-.group-delete-icon svg{width:17px;height:17px}
+.group-delete-icon svg{width:16px;height:16px}
 .add-group{background:#eee;color:#333}
 
 .group-title{display:flex;justify-content:space-between;align-items:center;margin:14px 0}
@@ -75,12 +73,13 @@ h2{font-size:20px;margin:0}
  background:transparent;color:#666;padding:0;
  width:29px;height:29px;min-width:29px;
  display:inline-flex;align-items:center;justify-content:center;
- font-size:16px;border-radius:6px
+ border-radius:6px;
 }
 .star{font-size:19px;color:#aaa}
 .star.on{color:#c99a00}
 .del{font-size:19px;color:#888}
-.arrow{font-size:18px}
+.arrow svg,.eye svg{width:18px;height:18px}
+.arrow:hover,.eye:hover{background:#f3f3f3}
 
 .status{font-size:11px;padding:6px 7px;white-space:nowrap;border-radius:5px}
 .none{background:#f7eeee;color:#9b4545}
@@ -202,6 +201,7 @@ h2{font-size:20px;margin:0}
  .group-tab-wrap{gap:3px;padding:3px 5px}
  .group-tab-wrap .tab{padding:7px 6px;font-size:13px}
  .add-person-circle{width:29px;height:29px;min-width:29px}
+ .group-delete-icon{width:27px;min-width:27px}
 }
 </style>
 </head>
@@ -241,7 +241,7 @@ h2{font-size:20px;margin:0}
 
  <div class="search-wrap">
   <div class="search-row">
-   <input class="search-input" id="searchInput" placeholder="ابحث عن اسم شخص..." autocomplete="off"
+   <input class="search-input" id="searchInput" placeholder="ابحث بالاسم أو رقم الجوال..." autocomplete="off"
     onfocus="showSearchPanel()" oninput="renderSearchPanel()"
     onkeydown="if(event.key==='Enter'){event.preventDefault();submitSearch()}">
    <button class="search-button" onclick="submitSearch()">بحث</button>
@@ -251,7 +251,7 @@ h2{font-size:20px;margin:0}
 
  <div class="form" id="personForm">
   <input id="personName" placeholder="اسم الشخص">
-  <input id="personPhone" placeholder="رقم الجوال">
+  <input id="personPhone" placeholder="رقم الجوال" type="tel">
   <div class="actions">
    <button class="save" onclick="savePerson()">إضافة</button>
    <button class="cancel" onclick="closePersonForm()">إلغاء</button>
@@ -299,7 +299,6 @@ let highlightPersonId="";
 let highlightTimer=null;
 let successTimer=null;
 
-/* المجموعة التي تخصها خانة إضافة الشخص */
 let personFormGroupId="";
 let deleteGroupId="";
 
@@ -367,7 +366,6 @@ async function handleAuth(){
  }
 }
 
-/* تأكيد تسجيل الخروج */
 function askLogout(){
  showModal(`
   <h3>تأكيد الخروج</h3>
@@ -567,7 +565,6 @@ function current(){
  return groups.find(g=>g.id===active)||groups[0];
 }
 
-/* إظهار نموذج الإضافة فقط عند الرجوع لمجموعته */
 function syncPersonFormVisibility(){
  const form=document.getElementById("personForm");
  if(!form)return;
@@ -580,7 +577,22 @@ function render(){
 
  document.getElementById("groups").innerHTML=
   groups.map(g=>`
-   <div class="group-item">
+   <div class="group-tab-wrap ${g.id===active?"active":""}">
+    <button class="tab" onclick="selectGroup('${g.id}')">
+     ${safe(g.name)}
+    </button>
+
+    <button class="add-person-circle"
+     onclick="addPersonToGroup('${g.id}')"
+     title="إضافة شخص" aria-label="إضافة شخص">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="10" cy="7" r="4"/>
+      <path d="M19 8v6M16 11h6"/>
+     </svg>
+    </button>
+
     <button class="group-delete-icon"
      onclick="askDeleteGroup('${g.id}')"
      title="حذف المجموعة" aria-label="حذف المجموعة">
@@ -590,22 +602,6 @@ function render(){
       <path d="M10 11v5M14 11v5"/>
      </svg>
     </button>
-
-    <div class="group-tab-wrap ${g.id===active?"active":""}">
-     <button class="tab" onclick="selectGroup('${g.id}')">
-      ${safe(g.name)}
-     </button>
-     <button class="add-person-circle"
-      onclick="addPersonToGroup('${g.id}')"
-      title="إضافة شخص" aria-label="إضافة شخص">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-       <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-       <circle cx="10" cy="7" r="4"/>
-       <path d="M19 8v6M16 11h6"/>
-      </svg>
-     </button>
-    </div>
    </div>
   `).join("")+
   `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`;
@@ -634,7 +630,9 @@ function render(){
     <div class="phone">${privateText(p.id,p.phone)}</div>
    </div>
    ${statusButton(p.id,p.status,false)}
-   <button class="arrow" onclick="toggleChildren('${p.id}')">${expanded[p.id]?"⌃":"⌄"}</button>
+   <button class="arrow" onclick="toggleChildren('${p.id}')" title="عرض الأسماء التابعة">
+    ${arrowIcon(expanded[p.id])}
+   </button>
    ${eyeButton(p.id)}
    <button class="del" onclick="askDeletePerson('${p.id}')">×</button>
   </div>
@@ -670,6 +668,14 @@ function render(){
  renderSearchPanel();
 }
 
+/* أيقونة السهم */
+function arrowIcon(isOpen){
+ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="${isOpen?"m6 15 6-6 6 6":"m6 9 6 6 6-6"}"/>
+ </svg>`;
+}
+
 /* البحث */
 function searchHistoryKey(){
  return "dcSearchHistory:"+((currentUser&&currentUser.id)||"guest");
@@ -695,6 +701,7 @@ function renderSearchPanel(){
  const panel=document.getElementById("searchPanel");
  const input=document.getElementById("searchInput");
  if(!panel||!input)return;
+
  const query=input.value.trim().toLowerCase();
 
  if(!searchFocused){
@@ -704,36 +711,61 @@ function renderSearchPanel(){
 
  if(query){
   searchResults=[];
+
   groups.forEach(g=>g.people.forEach(p=>{
-   const parentMatch=String(p.name||"").toLowerCase().includes(query);
-   const childMatch=p.children.find(c=>String(c.name||"").toLowerCase().includes(query));
-   if(parentMatch||childMatch){
+   const parentName=String(p.name||"").toLowerCase();
+   const parentPhone=String(p.phone||"").toLowerCase();
+
+   const parentMatch=parentName.includes(query)||parentPhone.includes(query);
+
+   if(parentMatch){
     searchResults.push({
-     groupId:g.id,personId:p.id,
-     personName:p.name,
-     childName:parentMatch?"":childMatch.name,
-     groupName:g.name
+     groupId:g.id,
+     personId:p.id,
+     resultName:p.name,
+     resultPhone:p.phone,
+     groupName:g.name,
+     childId:"",
+     isChild:false
     });
    }
+
+   p.children.forEach(c=>{
+    const childName=String(c.name||"").toLowerCase();
+    const childPhone=String(c.phone||"").toLowerCase();
+
+    if(childName.includes(query)||childPhone.includes(query)){
+     searchResults.push({
+      groupId:g.id,
+      personId:p.id,
+      resultName:c.name,
+      resultPhone:c.phone,
+      groupName:g.name,
+      childId:c.id,
+      isChild:true
+     });
+    }
+   });
   }));
 
   if(!searchResults.length){
-   panel.innerHTML='<div class="search-empty">ما لقينا اسم يطابق بحثك</div>';
+   panel.innerHTML='<div class="search-empty">ما لقينا نتيجة تطابق بحثك</div>';
   }else{
    panel.innerHTML='<div class="search-heading">نتائج البحث</div>'+
     searchResults.map((r,i)=>`
      <button class="search-item" onclick="openSearchResult(${i})">
       <span class="search-main">
-       <strong>${safe(r.personName)}</strong>
-       <small>${safe(r.groupName)}${r.childName?" · الاسم الفرعي: "+safe(r.childName):""}</small>
+       <strong>${safe(r.resultName)}</strong>
+       <small>${safe(r.resultPhone||"بدون رقم")} · ${safe(r.groupName)}${r.isChild?" · اسم تابع":""}</small>
       </span>
-      <span>↗</span>
+      <span style="color:#999;font-size:18px" aria-hidden="true">←</span>
      </button>
     `).join("");
   }
  }else{
   const history=getSearchHistory();
   searchResults=[];
+
   panel.innerHTML=history.length?
    '<div class="search-heading">عمليات البحث السابقة</div>'+
    history.map((item,i)=>`
@@ -778,8 +810,10 @@ function submitSearch(){
  const input=document.getElementById("searchInput");
  const query=input.value.trim();
  if(!query)return;
+
  addSearchHistory(query);
  renderSearchPanel();
+
  if(searchResults.length===1)openSearchResult(0);
 }
 
@@ -826,8 +860,15 @@ function privateText(id,value){
  return revealed[id]===false?"****":safe(value);
 }
 
+/* أيقونة العين بدون إيموجي */
 function eyeButton(id){
- return `<button class="eye" onclick="toggleEye('${id}')">👁</button>`;
+ return `<button class="eye" onclick="toggleEye('${id}')" title="إظهار أو إخفاء البيانات">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+   stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
+   <circle cx="12" cy="12" r="3"/>
+  </svg>
+ </button>`;
 }
 
 function toggleEye(id){
@@ -858,7 +899,6 @@ function addPersonToGroup(groupId){
  const group=groups.find(g=>g.id===groupId);
  if(!group)return;
 
- /* إذا ضغطت + مرة ثانية لنفس المجموعة، يخفي النموذج */
  if(personFormGroupId===groupId){
   const form=document.getElementById("personForm");
   if(form.classList.contains("show")){
@@ -894,9 +934,11 @@ function toggleChildren(id){
 function toggleStatus(id){
  const menu=document.getElementById("status-"+id);
  if(!menu)return;
+
  document.querySelectorAll(".status-list").forEach(x=>{
   if(x!==menu)x.classList.remove("show");
  });
+
  menu.classList.toggle("show");
 }
 
@@ -947,9 +989,8 @@ function saveGroup(){
  persist();
 }
 
-/* حذف المجموعة من علامة الحذف الموجودة بجانبها */
+/* حذف المجموعة من الأيقونة الموجودة داخل إطارها */
 function askDeleteGroup(groupId){
- deleteGroupId=groupId;
  const group=groups.find(g=>g.id===groupId);
  if(!group)return;
 
@@ -957,6 +998,8 @@ function askDeleteGroup(groupId){
   showModal('<h3>تنبيه</h3><p>لازم تخلي مجموعة واحدة على الأقل.</p><button class="dark" onclick="closeModal()">حسنًا</button>');
   return;
  }
+
+ deleteGroupId=groupId;
 
  showModal(`
   <h3>حذف المجموعة</h3>
@@ -970,10 +1013,11 @@ function askDeleteGroup(groupId){
 
 function confirmDeleteGroup(){
  const removedId=deleteGroupId;
+ if(!removedId)return;
+
  groups=groups.filter(g=>g.id!==removedId);
 
  if(active===removedId)active=groups[0].id;
-
  if(personFormGroupId===removedId)closePersonForm();
 
  deleteGroupId="";
