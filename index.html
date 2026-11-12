@@ -57,6 +57,33 @@ h2{font-size:20px;margin:0}
 .actions{display:flex;gap:7px}
 .actions button{flex:1}
 .empty{text-align:center;color:#999;padding:25px 10px;background:#fafafa;border-radius:8px}
+
+/* البحث */
+.search-wrap{position:relative;margin:0 0 14px}
+.search-row{display:flex;gap:7px}
+.search-input{width:100%;min-width:0;padding:12px;border:1px solid #e8e8e8;border-radius:8px;outline:none;background:#fafafa}
+.search-input:focus{border-color:#bbb;background:#fff}
+.search-button{background:#222;color:#fff;min-width:62px}
+.search-panel{display:none;position:absolute;top:calc(100% + 5px);right:0;left:0;background:#fff;border:1px solid #e8e8e8;border-radius:9px;box-shadow:0 6px 18px #00000012;z-index:15;max-height:280px;overflow:auto}
+.search-panel.show{display:block}
+.search-heading{font-size:11px;color:#999;padding:10px 12px 5px}
+.search-item{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border-radius:0;background:#fff;text-align:right;border-bottom:1px solid #f2f2f2}
+.search-item:last-child{border-bottom:0}
+.search-item:hover{background:#f7f7f7}
+.search-item .search-main{flex:1;min-width:0}
+.search-item strong{display:block;font-size:13px;color:#333}
+.search-item small{display:block;color:#999;font-size:11px;margin-top:4px}
+.search-remove{background:transparent;color:#999;font-size:17px;padding:2px 7px}
+.search-empty{font-size:12px;color:#999;padding:13px}
+
+/* التحديد الداكن المؤقت */
+.person.search-highlight{background:#222;color:#fff;border-radius:9px;padding:12px;margin:8px 0}
+.person.search-highlight .name{color:#fff}
+.person.search-highlight .phone{color:#ccc}
+.person.search-highlight .star,.person.search-highlight .eye,.person.search-highlight .arrow,.person.search-highlight .del{color:#fff}
+.person.search-highlight .children{border-right-color:#666}
+.person.search-highlight .child{border-bottom-color:#555}
+
 .modal-bg{display:none;position:fixed;inset:0;background:#0006;z-index:20;align-items:center;justify-content:center;padding:20px}
 .modal-bg.show{display:flex}
 .modal{background:#fff;border-radius:10px;padding:17px;width:100%;max-width:330px}
@@ -110,6 +137,17 @@ h2{font-size:20px;margin:0}
   <button class="group-delete" onclick="askDeleteGroup()">× حذف المجموعة</button>
  </div>
 
+ <!-- خانة البحث -->
+ <div class="search-wrap">
+  <div class="search-row">
+   <input class="search-input" id="searchInput" placeholder="ابحث عن اسم شخص..." autocomplete="off"
+    onfocus="showSearchPanel()" oninput="renderSearchPanel()"
+    onkeydown="if(event.key==='Enter'){event.preventDefault();submitSearch()}">
+   <button class="search-button" onclick="submitSearch()">بحث</button>
+  </div>
+  <div class="search-panel" id="searchPanel"></div>
+ </div>
+
  <div id="people"></div>
 
  <div class="form" id="personForm">
@@ -158,6 +196,12 @@ let revealed={};
 let isSignup=false;
 let currentUser=null;
 let saveQueue=Promise.resolve();
+
+/* متغيرات البحث */
+let searchResults=[];
+let searchFocused=false;
+let highlightPersonId="";
+let highlightTimer=null;
 
 function uid(){return crypto.randomUUID()}
 function newGroup(name){return{id:uid(),name,people:[]}}
@@ -430,11 +474,12 @@ function render(){
 
  if(!list.length){
   area.innerHTML='<div class="empty">ما فيه أشخاص هنا</div>';
+  renderSearchPanel();
   return;
  }
 
  area.innerHTML=list.map(p=>`
- <div class="person">
+ <div class="person ${highlightPersonId===p.id?"search-highlight":""}" id="person-${p.id}">
   <div class="line">
    <button class="star ${p.favorite?"on":""}" onclick="favorite('${p.id}')">★</button>
    <div class="info">
@@ -474,7 +519,154 @@ function render(){
   </div>`:""}
  </div>
  `).join("");
+ renderSearchPanel();
 }
+
+/* سجل البحث محفوظ على نفس الجهاز ولكل حساب سجل مستقل */
+function searchHistoryKey(){
+ return "dcSearchHistory:"+((currentUser&&currentUser.id)||"guest");
+}
+
+function getSearchHistory(){
+ try{
+  const value=JSON.parse(localStorage.getItem(searchHistoryKey())||"[]");
+  return Array.isArray(value)?value.filter(x=>typeof x==="string"):[];
+ }catch(e){return []}
+}
+
+function saveSearchHistory(items){
+ localStorage.setItem(searchHistoryKey(),JSON.stringify(items));
+}
+
+function showSearchPanel(){
+ searchFocused=true;
+ renderSearchPanel();
+}
+
+function renderSearchPanel(){
+ const panel=document.getElementById("searchPanel");
+ const input=document.getElementById("searchInput");
+ if(!panel||!input)return;
+ const query=input.value.trim().toLowerCase();
+
+ if(!searchFocused){
+  panel.classList.remove("show");
+  return;
+ }
+
+ if(query){
+  searchResults=[];
+  groups.forEach(g=>g.people.forEach(p=>{
+   const parentMatch=String(p.name||"").toLowerCase().includes(query);
+   const childMatch=p.children.find(c=>String(c.name||"").toLowerCase().includes(query));
+   if(parentMatch||childMatch){
+    searchResults.push({
+     groupId:g.id,personId:p.id,
+     personName:p.name,
+     childName:parentMatch?"":childMatch.name,
+     groupName:g.name
+    });
+   }
+  }));
+
+  if(!searchResults.length){
+   panel.innerHTML='<div class="search-empty">ما لقينا اسم يطابق بحثك</div>';
+  }else{
+   panel.innerHTML='<div class="search-heading">نتائج البحث</div>'+
+    searchResults.map((r,i)=>`
+     <button class="search-item" onclick="openSearchResult(${i})">
+      <span class="search-main">
+       <strong>${safe(r.personName)}</strong>
+       <small>${safe(r.groupName)}${r.childName?" · الاسم الفرعي: "+safe(r.childName):""}</small>
+      </span>
+      <span>↗</span>
+     </button>
+    `).join("");
+  }
+ }else{
+  const history=getSearchHistory();
+  searchResults=[];
+  panel.innerHTML=history.length?
+   '<div class="search-heading">عمليات البحث السابقة</div>'+
+   history.map((item,i)=>`
+    <div class="search-item">
+     <button class="search-main" style="background:transparent;text-align:right;padding:0" onclick="useSearchHistory(${i})">
+      <strong>${safe(item)}</strong>
+      <small>بحث سابق</small>
+     </button>
+     <button class="search-remove" title="حذف البحث" aria-label="حذف البحث" onclick="removeSearchHistory(${i})">×</button>
+    </div>
+   `).join("")
+   :'<div class="search-empty">ما فيه عمليات بحث سابقة</div>';
+ }
+ panel.classList.add("show");
+}
+
+function addSearchHistory(query){
+ query=String(query||"").trim();
+ if(!query)return;
+ let items=getSearchHistory().filter(x=>x.toLowerCase()!==query.toLowerCase());
+ items.unshift(query);
+ saveSearchHistory(items.slice(0,12));
+}
+
+function removeSearchHistory(index){
+ const items=getSearchHistory();
+ items.splice(index,1);
+ saveSearchHistory(items);
+ // الحذف فوري بدون رسالة تأكيد
+ renderSearchPanel();
+}
+
+function useSearchHistory(index){
+ const item=getSearchHistory()[index];
+ if(!item)return;
+ document.getElementById("searchInput").value=item;
+ renderSearchPanel();
+ submitSearch();
+}
+
+function submitSearch(){
+ const input=document.getElementById("searchInput");
+ const query=input.value.trim();
+ if(!query)return;
+ addSearchHistory(query);
+ renderSearchPanel();
+ if(searchResults.length===1)openSearchResult(0);
+}
+
+function openSearchResult(index){
+ const result=searchResults[index];
+ if(!result)return;
+
+ addSearchHistory(document.getElementById("searchInput").value.trim());
+ active=result.groupId;
+ expanded[result.personId]=true;
+ highlightPersonId=result.personId;
+
+ if(highlightTimer)clearTimeout(highlightTimer);
+
+ searchFocused=false;
+ render();
+
+ requestAnimationFrame(()=>{
+  const target=document.getElementById("person-"+result.personId);
+  if(target)target.scrollIntoView({behavior:"smooth",block:"center"});
+ });
+
+ highlightTimer=setTimeout(()=>{
+  highlightPersonId="";
+  render();
+ },3000);
+}
+
+document.addEventListener("click",function(event){
+ const wrap=document.querySelector(".search-wrap");
+ if(wrap&&!wrap.contains(event.target)){
+  searchFocused=false;
+  document.getElementById("searchPanel")?.classList.remove("show");
+ }
+});
 
 function privateText(id,value){
  return revealed[id]===false?"****":safe(value);
@@ -740,3 +932,4 @@ db.auth.onAuthStateChange((event,session)=>{
 </script>
 </body>
 </html>
+ذ
