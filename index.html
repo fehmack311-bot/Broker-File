@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -19,7 +18,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 h2{font-size:20px;margin:0}
 .dark,.save{background:#222;color:#fff}
 .cancel{background:#f1f1f1;color:#444}
-.groups{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.groups{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .tab{background:#f6f6f6;color:#444}
 .tab.active{background:#222;color:#fff}
 .add-group{background:#eee;color:#333}
@@ -207,14 +206,6 @@ h2{font-size:20px;margin:0}
  <div class="group-title">
   <div class="group-heading">
    <h3 id="groupTitle"></h3>
-   <button class="add-person-top" onclick="togglePersonForm()" title="إضافة شخص" aria-label="إضافة شخص">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-     <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-     <circle cx="10" cy="7" r="4"/>
-     <path d="M19 8v6M16 11h6"/>
-    </svg>
-   </button>
   </div>
   <button class="group-delete" onclick="askDeleteGroup()">× حذف المجموعة</button>
  </div>
@@ -547,7 +538,15 @@ function render(){
   groups.map(g=>
    `<button class="tab ${g.id===active?"active":""}" onclick="selectGroup('${g.id}')">${safe(g.name)}</button>`
   ).join("")+
-  `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`;
+  `<button class="tab add-group" onclick="openGroupForm()">＋ إضافة مجموعة</button>`+
+  `<button class="add-person-top" onclick="togglePersonForm()" title="إضافة شخص" aria-label="إضافة شخص">
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="10" cy="7" r="4"/>
+    <path d="M19 8v6M16 11h6"/>
+   </svg>
+  </button>`;
 
  document.getElementById("groupTitle").textContent=current().name;
 
@@ -908,7 +907,7 @@ function savePerson(){
   return;
  }
 
- current().people.push({
+ current().people.unshift({
   id:uid(),name,phone,status:0,favorite:false,children:[]
  });
 
